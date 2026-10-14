@@ -1,0 +1,3 @@
+# benchmark outputs are regenerable and machine-specific (latency);
+# the README quotes the committed headline numbers instead
+*.json
