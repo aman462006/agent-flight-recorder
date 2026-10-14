@@ -14,8 +14,8 @@ it went wrong, not just *that* it did.
 
 | Phase | Scope | State |
 |---|---|---|
-| 1 | Recorder SDK: run/span/event model, SQLite store, redaction | ✅ shipped, 6/6 tests |
-| 2 | Ingestion API (FastAPI): validation, idempotency, redaction | next |
+| 1 | Recorder SDK: run/span/event model, SQLite store, redaction | ✅ shipped |
+| 2 | Ingestion API (FastAPI): validation, idempotency, redaction | ✅ shipped, 14/14 tests |
 | 3 | Dashboard (React + TS): run list, span timeline, event inspector | planned |
 | 4 | Cost & latency profiler (pricing config, cached tokens) | planned |
 | 5 | Replay & diff: deterministic replay + live rerun, earliest-divergence diff | planned |
@@ -81,4 +81,4 @@ stale-figure failure leaving findable evidence. 6/6 passing.
 
 ## Stack
 
-Python 3.11 SDK + SQLite (Postgres later) · FastAPI (Phase 2) · React + TypeScript (Phase 3) · pytest · Render + Vercel for deploy
+Python 3.11 SDK + SQLite (Postgres later) · FastAPI ingestion API (`api/main.py`, `uvicorn api.main:app`) · React + TypeScript (Phase 3) · pytest · Render + Vercel for deploy

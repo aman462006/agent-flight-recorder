@@ -107,7 +107,7 @@ class SqliteStore:
     @property
     def conn(self) -> sqlite3.Connection:
         if self._conn is None:
-            self._conn = sqlite3.connect(self.path)
+            self._conn = sqlite3.connect(self.path, check_same_thread=False)
             self._conn.executescript(self.DDL)
         return self._conn
 
