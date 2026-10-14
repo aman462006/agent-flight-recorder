@@ -143,3 +143,12 @@ def get_run(run_id: str) -> Dict[str, Any]:
     if run_id not in runs:
         raise HTTPException(status_code=404, detail="run not found")
     return {"run": runs[run_id], "events": store.get_events(run_id)}
+
+
+@app.get("/runs/{run_id}/profile")
+def get_run_profile(run_id: str) -> Dict[str, Any]:
+    runs = {r["run_id"]: r for r in store.list_runs()}
+    if run_id not in runs:
+        raise HTTPException(status_code=404, detail="run not found")
+    from afrec.profiler import profile_run
+    return profile_run(store.get_events(run_id))

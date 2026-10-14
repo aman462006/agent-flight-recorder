@@ -17,7 +17,7 @@ it went wrong, not just *that* it did.
 | 1 | Recorder SDK: run/span/event model, SQLite store, redaction | ✅ shipped |
 | 2 | Ingestion API (FastAPI): validation, idempotency, redaction | ✅ shipped, 14/14 tests |
 | 3 | Dashboard (React + TS): run list, span timeline, event inspector | ✅ shipped, 7 logic tests + tsc strict + prod build |
-| 4 | Cost & latency profiler (pricing config, cached tokens) | planned |
+| 4 | Cost & latency profiler (pricing config, cached tokens) | ✅ shipped, 20/20 tests + /runs/{id}/profile |
 | 5 | Replay & diff: deterministic replay + live rerun, earliest-divergence diff | planned |
 | 6 | Failure investigator: evidence-linked diagnosis, hypothesis labelled as hypothesis | planned |
 | 7 | Benchmark: 50–100 scripted failures, measured metrics | planned |

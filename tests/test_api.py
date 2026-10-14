@@ -116,3 +116,20 @@ def test_unknown_event_kind_preserved():
 def test_invalid_payload_rejected_before_store():
     r = client.post("/events", json={"run_id": "x"})  # missing required fields
     assert r.status_code == 422
+
+
+def test_profile_endpoint_end_to_end():
+    client.post("/runs", json=_mk_run(run_id="run_prof"))
+    for i in range(2):
+        client.post("/events", json={
+            "run_id": "run_prof", "kind": "llm.response", "span_id": "s1",
+            "timestamp": 1760000000.0 + i, "t_offset_ms": 10 + i,
+            "data": {}, "model": "gpt-4o-mini",
+            "input_tokens": 1000, "output_tokens": 200,
+        })
+    r = client.get("/runs/run_prof/profile")
+    assert r.status_code == 200
+    p = r.json()
+    assert p["totals"]["llm_calls"] == 2
+    assert p["totals"]["input_tokens"] == 2000
+    assert p["totals"]["estimated_cost_usd"] > 0

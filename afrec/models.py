@@ -106,7 +106,7 @@ class PricingConfig:
         out = output_tokens or 0
         cached = 0
         if cached_tokens:
-            cached = min(cached, inp)
+            cached = min(cached_tokens, inp)
         uncached = inp - cached
         cached_rate = self.cached_input_per_m
         if cached_rate is None:
