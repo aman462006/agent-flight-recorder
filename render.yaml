@@ -1,0 +1,22 @@
+# Render blueprint — Agent Flight Recorder ingestion API.
+# Deploy: push this repo to Render (New > Blueprint), or `render deploy`.
+#
+# HONEST LIMIT, stated up front: the free plan has no persistent disk, so
+# the SQLite file resets on every deploy/restart. Fine for a demo; for
+# anything real, either attach a disk (paid) or point AFREC_API_DB at a
+# mounted volume / swap SqliteStore for a Postgres store (the SQL shape
+# was designed to port).
+
+services:
+  - type: web
+    name: afrec-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: AFREC_API_DB
+        value: /tmp/afrec_api.sqlite3
