@@ -18,7 +18,7 @@ it went wrong, not just *that* it did.
 | 2 | Ingestion API (FastAPI): validation, idempotency, redaction | ✅ shipped, 14/14 tests |
 | 3 | Dashboard (React + TS): run list, span timeline, event inspector | ✅ shipped, 7 logic tests + tsc strict + prod build |
 | 4 | Cost & latency profiler (pricing config, cached tokens) | ✅ shipped, 20/20 tests + /runs/{id}/profile |
-| 5 | Replay & diff: deterministic replay + live rerun, earliest-divergence diff | planned |
+| 5 | Replay & diff: deterministic replay + earliest-divergence diff | ✅ shipped, 28/28 tests |
 | 6 | Failure investigator: evidence-linked diagnosis, hypothesis labelled as hypothesis | planned |
 | 7 | Benchmark: 50–100 scripted failures, measured metrics | planned |
 | 8 | Deploy (Render + Vercel), demo video, README metrics | planned |
