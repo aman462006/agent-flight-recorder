@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { listRuns, getRun, ApiRun, ApiEvent } from './api';
+import { listRuns, getRun, investigateRun, ApiRun, ApiEvent, ApiInvestigation } from './api';
+import { sortFindings, countBySeverity } from './trace';
 import { buildSpanTree, summarizeCost, runDuration, SpanNode } from './trace';
 
 const KIND_COLORS: Record<string, string> = {
@@ -63,7 +64,86 @@ function EventInspector({ events }: { events: ApiEvent[] }) {
   );
 }
 
-function RunDetail({ runId }: { runId: string }) {
+
+const SEVERITY_COLORS: Record<string, string> = {
+  critical: '#e5484d',
+  warning: '#f0b429',
+  info: '#7ec8e3',
+};
+
+function InvestigationPanel({ runId, otherRuns }: { runId: string; otherRuns: ApiRun[] }) {
+  const [inv, setInv] = useState<ApiInvestigation | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [baseline, setBaseline] = useState<string>('');
+
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await investigateRun(runId, baseline || undefined);
+      setInv(result);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <h3 style={{ fontSize: 13, color: '#8b96a5', margin: '16px 0 8px', textTransform: 'uppercase', letterSpacing: 0.5 }}>Investigation</h3>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button onClick={run} disabled={busy} style={{ background: '#1c2430', color: busy ? '#5c6773' : '#dbe2ef', border: '1px solid #2a3444', borderRadius: 6, padding: '6px 12px', cursor: busy ? 'default' : 'pointer', fontSize: 13 }}>
+          {busy ? 'Investigating…' : 'Investigate this run'}
+        </button>
+        <select
+          value={baseline}
+          onChange={(e) => setBaseline(e.target.value)}
+          style={{ background: '#0f141c', color: '#8b96a5', border: '1px solid #2a3444', borderRadius: 6, padding: '6px 8px', fontSize: 12, maxWidth: 220 }}
+        >
+          <option value="">no baseline (single-run rules)</option>
+          {otherRuns.map((r) => (
+            <option key={r.run_id} value={r.run_id}>baseline: {r.task.slice(0, 40)}</option>
+          ))}
+        </select>
+      </div>
+      {error && <div style={{ color: '#e5484d', fontSize: 12, marginBottom: 8 }}>{error}</div>}
+      {inv && inv.clean && (
+        <div style={{ background: '#0f141c', borderRadius: 8, padding: 12, color: '#4cc38a', fontSize: 13 }}>
+          No rules fired. That means no recorded contradictions, crashes or gaps — not a verdict that the run was correct.
+        </div>
+      )}
+      {inv && !inv.clean && (() => {
+        const findings = sortFindings(inv.findings);
+        const counts = countBySeverity(inv.findings);
+        return (
+          <div>
+            <div style={{ fontSize: 12, color: '#8b96a5', marginBottom: 8 }}>
+              {counts.critical} critical · {counts.warning} warning · {counts.info} info
+            </div>
+            {findings.map((f, i) => (
+              <div key={`${f.rule}-${i}`} style={{ background: '#0f141c', borderRadius: 8, padding: 12, marginBottom: 8, borderLeft: `3px solid ${SEVERITY_COLORS[f.severity] ?? '#5c6773'}` }}>
+                <div style={{ fontSize: 12, marginBottom: 4, fontFamily: 'ui-monospace, monospace', color: SEVERITY_COLORS[f.severity] ?? '#8b96a5' }}>
+                  {f.rule} · {f.severity}
+                </div>
+                <div style={{ fontSize: 13, marginBottom: 6 }}>{f.observed}</div>
+                {f.hypothesis && <div style={{ fontSize: 12, color: '#8b96a5', fontStyle: 'italic', marginBottom: 6 }}>Hypothesis: {f.hypothesis}</div>}
+                {f.evidence.map((e, j) => (
+                  <div key={j} style={{ fontSize: 11, color: '#5c6773', fontFamily: 'ui-monospace, monospace', marginTop: 4 }}>
+                    evidence {e.event_id ? `${e.kind} ${e.event_id}` : e.kind}: {e.excerpt}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+function RunDetail({ runId, otherRuns }: { runId: string; otherRuns: ApiRun[] }) {
   const [data, setData] = useState<{ run: ApiRun; events: ApiEvent[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<SpanNode | null>(null);
@@ -110,6 +190,8 @@ function RunDetail({ runId }: { runId: string }) {
         {tree.length === 0 && <div style={{ color: '#5c6773', fontSize: 13, padding: 8 }}>No spans recorded for this run.</div>}
         {tree.map((s) => <SpanRow key={s.span_id} node={s} depth={0} onSelect={setSelected} selectedId={selected?.span_id ?? null} />)}
       </div>
+
+      <InvestigationPanel runId={runId} otherRuns={otherRuns} />
 
       <h3 style={{ fontSize: 13, color: '#8b96a5', margin: '16px 0 8px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
         {selected ? `Span: ${selected.label}` : 'Run-level events'}
@@ -167,7 +249,7 @@ function App() {
         {runs?.length === 0 && <div style={{ color: '#5c6773', fontSize: 13 }}>No runs yet. Record one with the SDK.</div>}
       </aside>
       <main style={{ flex: 1 }}>
-        {selectedRun ? <RunDetail runId={selectedRun} /> : <div style={{ padding: 20, color: '#5c6773' }}>Select a run.</div>}
+        {selectedRun ? <RunDetail runId={selectedRun} otherRuns={(runs ?? []).filter((r) => r.run_id !== selectedRun)} /> : <div style={{ padding: 20, color: '#5c6773' }}>Select a run.</div>}
       </main>
     </div>
   );

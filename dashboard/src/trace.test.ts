@@ -84,3 +84,26 @@ describe('runDuration', () => {
     expect(runDuration([])).toBeNull();
   });
 });
+
+describe('Phase 6 investigation logic', () => {
+  const finding = (severity: string, rule: string) => ({
+    rule, severity, observed: 'x', hypothesis: 'y',
+    evidence: [{ event_id: null, kind: 'k', t_offset_ms: 0, excerpt: 'e' }],
+  });
+
+  it('sorts findings most severe first, keeping server order within a severity', async () => {
+    const { sortFindings } = await import('./trace');
+    const findings = [finding('info', 'a'), finding('critical', 'b'), finding('warning', 'c'), finding('info', 'd')];
+    const sorted = sortFindings(findings);
+    expect(sorted.map((f) => f.severity)).toEqual(['critical', 'warning', 'info', 'info']);
+    expect(sorted[2].rule).toBe('a'); // stable within severity
+    // does not mutate the input
+    expect(findings[0].severity).toBe('info');
+  });
+
+  it('counts by severity and ignores unknown severities', async () => {
+    const { countBySeverity } = await import('./trace');
+    const counts = countBySeverity([finding('critical', 'a'), finding('critical', 'b'), finding('weird', 'c')]);
+    expect(counts).toEqual({ critical: 2, warning: 0, info: 0 });
+  });
+});

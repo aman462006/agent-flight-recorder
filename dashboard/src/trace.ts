@@ -144,3 +144,41 @@ export function runDuration(events: Event[]): number | null {
   if (!end) return null; // crashed / partial: no duration, not a fake one
   return end.t_offset_ms - start.t_offset_ms;
 }
+
+// -- Phase 6: investigation display logic -----------------------------------
+
+export interface InvestigationFinding {
+  rule: string;
+  severity: string; // 'critical' | 'warning' | 'info' | unknown
+  observed: string;
+  hypothesis: string;
+  evidence: { event_id: string | null; kind: string; t_offset_ms: number | null; excerpt: string }[];
+}
+
+export interface Investigation {
+  run_id: string;
+  clean: boolean;
+  finding_count: number;
+  findings: InvestigationFinding[];
+  note: string;
+}
+
+const SEVERITY_RANK: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+
+/** Most severe first; within a severity, keeps the server's original order. */
+export function sortFindings(findings: InvestigationFinding[]): InvestigationFinding[] {
+  return [...findings].sort(
+    (a, b) => (SEVERITY_RANK[a.severity] ?? 3) - (SEVERITY_RANK[b.severity] ?? 3),
+  );
+}
+
+/** Counts per severity, for the summary line above the findings list. */
+export function countBySeverity(findings: InvestigationFinding[]): { critical: number; warning: number; info: number } {
+  const counts = { critical: 0, warning: 0, info: 0 };
+  for (const f of findings) {
+    if (f.severity === 'critical' || f.severity === 'warning' || f.severity === 'info') {
+      counts[f.severity] += 1;
+    }
+  }
+  return counts;
+}

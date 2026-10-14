@@ -36,3 +36,38 @@ export async function getRun(runId: string): Promise<{ run: ApiRun; events: ApiE
   if (!res.ok) throw new Error(`GET /runs/${runId} failed: ${res.status}`);
   return res.json();
 }
+
+
+export interface ApiEvidence {
+  event_id: string | null;
+  kind: string;
+  t_offset_ms: number | null;
+  excerpt: string;
+}
+
+export interface ApiFinding {
+  rule: string;
+  severity: 'critical' | 'warning' | 'info';
+  observed: string;
+  hypothesis: string;
+  evidence: ApiEvidence[];
+}
+
+export interface ApiInvestigation {
+  run_id: string;
+  clean: boolean;
+  finding_count: number;
+  findings: ApiFinding[];
+  note: string;
+}
+
+/** Phase 6: evidence-linked failure investigation for one run.
+ *  Optional baseline run adds the earliest-divergence finding. */
+export async function investigateRun(runId: string, baselineRunId?: string): Promise<ApiInvestigation> {
+  const url = baselineRunId
+    ? `${API_BASE}/runs/${encodeURIComponent(runId)}/investigate?baseline_run_id=${encodeURIComponent(baselineRunId)}`
+    : `${API_BASE}/runs/${encodeURIComponent(runId)}/investigate`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`investigate failed: ${res.status}`);
+  return res.json();
+}

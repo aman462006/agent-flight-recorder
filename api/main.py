@@ -152,3 +152,28 @@ def get_run_profile(run_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="run not found")
     from afrec.profiler import profile_run
     return profile_run(store.get_events(run_id))
+
+
+@app.get("/runs/{run_id}/investigate")
+def investigate(run_id: str, baseline_run_id: Optional[str] = None) -> Dict[str, Any]:
+    """Phase 6: evidence-linked failure investigation for one run.
+
+    Optional baseline_run_id compares this run against a healthy run and
+    adds the earliest-divergence finding from the Phase 5 diff.
+    """
+    runs = {r["run_id"]: r for r in store.list_runs()}
+    if run_id not in runs:
+        raise HTTPException(status_code=404, detail="run not found")
+    if baseline_run_id is not None and baseline_run_id not in runs:
+        raise HTTPException(status_code=404, detail=f"baseline run not found: {baseline_run_id}")
+
+    from afrec.investigator import investigate_run
+    baseline_events = store.get_events(baseline_run_id) if baseline_run_id else None
+    inv = investigate_run(
+        store.get_events(run_id),
+        run_meta=runs[run_id],
+        run_id=run_id,
+        baseline_events=baseline_events,
+        baseline_run_id=baseline_run_id,
+    )
+    return inv.to_json()
