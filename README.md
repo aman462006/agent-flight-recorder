@@ -16,7 +16,7 @@ it went wrong, not just *that* it did.
 |---|---|---|
 | 1 | Recorder SDK: run/span/event model, SQLite store, redaction | ✅ shipped |
 | 2 | Ingestion API (FastAPI): validation, idempotency, redaction | ✅ shipped, 14/14 tests |
-| 3 | Dashboard (React + TS): run list, span timeline, event inspector | planned |
+| 3 | Dashboard (React + TS): run list, span timeline, event inspector | ✅ shipped, 7 logic tests + tsc strict + prod build |
 | 4 | Cost & latency profiler (pricing config, cached tokens) | planned |
 | 5 | Replay & diff: deterministic replay + live rerun, earliest-divergence diff | planned |
 | 6 | Failure investigator: evidence-linked diagnosis, hypothesis labelled as hypothesis | planned |
@@ -72,7 +72,8 @@ python -m demo_agent.agent
 ## Tests
 
 ```bash
-python3 -m pytest tests/ -q
+python3 -m pytest tests/ -q        # SDK + API (14 tests)
+cd dashboard && npx vitest run  # trace-reconstruction logic (7 tests)
 ```
 
 Phase 1 acceptance: complete ordered traces, parent-child reconstruction,
@@ -81,4 +82,4 @@ stale-figure failure leaving findable evidence. 6/6 passing.
 
 ## Stack
 
-Python 3.11 SDK + SQLite (Postgres later) · FastAPI ingestion API (`api/main.py`, `uvicorn api.main:app`) · React + TypeScript (Phase 3) · pytest · Render + Vercel for deploy
+Python 3.11 SDK + SQLite (Postgres later) · FastAPI ingestion API (`api/main.py`, `uvicorn api.main:app`) · React + TypeScript dashboard (`dashboard/`, `npm run dev`) · pytest · Render + Vercel for deploy
