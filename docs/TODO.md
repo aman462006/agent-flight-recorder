@@ -1,11 +1,14 @@
 # Docs TODO
 
-## `docs/dashboard.png` — screenshot pending
+## `docs/dashboard.png` — CAPTURED 2026-10-15
 
-The README references `docs/dashboard.png`. It does not exist yet, and no
-placeholder or generated image will be shipped in its place.
+Real screenshot of the live dashboard (https://agent-flight-recorder-tsd3.vercel.app)
+showing a real recorded run: `demo-deterministic-circle-area`, streamed to the
+ingestion API with the SDK (`afrec.HttpStore`), one tool call, timeline visible.
+Not a mockup.
 
-**To do (Aman):** open the live dashboard, open a real recorded trace
-(e.g. one of the `bench/real` runs, or a RevGuard diagnosis streamed via
-`afrec.HttpStore`), capture the actual screenshot, and save it as
-`docs/dashboard.png`. A real capture of real data, not a mockup.
+To recapture (the API's storage is ephemeral, so the run may need recreating):
+
+    # 1) stream a fresh run (see scripts/ capture script header for the SDK snippet)
+    # 2) npm i -D playwright && npx playwright install chromium
+    node scripts/capture_dashboard.mjs

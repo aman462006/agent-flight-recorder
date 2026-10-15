@@ -216,8 +216,7 @@ stale-figure failure leaving findable evidence. All enforced by the suite above.
 ## Dashboard
 
 ![Dashboard showing a real recorded trace](docs/dashboard.png)
-*(screenshot pending, see docs/TODO.md; it will be a real capture of the
-live dashboard, not a mockup)*
+A real capture of the live dashboard showing a recorded run.
 
 ## Stack
 
