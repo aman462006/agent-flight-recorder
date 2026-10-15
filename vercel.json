@@ -18,15 +18,13 @@
     {
       "source": "/",
       "destination": {
-        "service": "dashboard",
-        "path": "/"
+        "service": "dashboard"
       }
     },
     {
-      "source": "/dashboard/:path*",
+      "source": "/assets/(.*)",
       "destination": {
-        "service": "dashboard",
-        "path": "/:path*"
+        "service": "dashboard"
       }
     },
     {
@@ -39,7 +37,11 @@
   "redirects": [
     {
       "source": "/dashboard",
-      "destination": "/dashboard/"
+      "destination": "/"
+    },
+    {
+      "source": "/dashboard/(.*)",
+      "destination": "/"
     }
   ]
 }
