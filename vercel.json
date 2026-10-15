@@ -15,11 +15,31 @@
     }
   },
   "rewrites": [
-    { "source": "/", "destination": { "service": "dashboard", "path": "/" } },
-    { "source": "/dashboard/(.*)", "destination": { "service": "dashboard", "path": "/$1" } },
-    { "source": "/(.*)", "destination": { "service": "afrec-api" } }
+    {
+      "source": "/",
+      "destination": {
+        "service": "dashboard",
+        "path": "/"
+      }
+    },
+    {
+      "source": "/dashboard/:path*",
+      "destination": {
+        "service": "dashboard",
+        "path": "/:path*"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "afrec-api"
+      }
+    }
   ],
   "redirects": [
-    { "source": "/dashboard", "destination": "/dashboard/" }
+    {
+      "source": "/dashboard",
+      "destination": "/dashboard/"
+    }
   ]
 }
