@@ -41,6 +41,16 @@ export interface SpanNode {
   incomplete: boolean;
 }
 
+/** Per-span token totals for LLM spans (from llm.response events).
+ *  Tool spans return null — they don't consume tokens. */
+export function spanTokens(events: Event[]): { input: number; output: number; cached: number } | null {
+  const resp = events.filter((e) => e.kind === 'llm.response');
+  if (resp.length === 0) return null;
+  const sum = (k: 'input_tokens' | 'output_tokens' | 'cached_tokens') =>
+    resp.reduce((acc, e) => acc + (e[k] ?? 0), 0);
+  return { input: sum('input_tokens'), output: sum('output_tokens'), cached: sum('cached_tokens') };
+}
+
 export interface CostSummary {
   input_tokens: number;
   output_tokens: number;

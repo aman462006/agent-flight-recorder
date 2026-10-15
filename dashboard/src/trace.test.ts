@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSpanTree, summarizeCost, runDuration, Event } from './trace';
+import { buildSpanTree, summarizeCost, runDuration, spanTokens, Event } from './trace';
 
 const ev = (o: Partial<Event>): Event => ({
   event_id: o.event_id ?? `e${Math.random()}`,
@@ -107,3 +107,12 @@ describe('Phase 6 investigation logic', () => {
     expect(counts).toEqual({ critical: 2, warning: 0, info: 0 });
   });
 });
+
+it('computes per-span token totals from llm.response events', () => {
+    expect(spanTokens([
+      ev({ kind: 'llm.response', input_tokens: 800, output_tokens: 170, cached_tokens: 0 }),
+      ev({ kind: 'llm.response', input_tokens: 200, output_tokens: 30, cached_tokens: 100 }),
+      ev({ kind: 'span.end', data: {} }),
+    ])).toEqual({ input: 1000, output: 200, cached: 100 });
+    expect(spanTokens([ev({ kind: 'span.end', data: {} })])).toBeNull();
+  });

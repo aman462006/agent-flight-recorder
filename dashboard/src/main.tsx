@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { listRuns, getRun, investigateRun, ApiRun, ApiEvent, ApiInvestigation } from './api';
 import { sortFindings, countBySeverity } from './trace';
-import { buildSpanTree, summarizeCost, runDuration, SpanNode } from './trace';
+import { buildSpanTree, summarizeCost, runDuration, spanTokens, SpanNode } from './trace';
 
 const KIND_COLORS: Record<string, string> = {
   llm: '#f0b429',
@@ -28,6 +28,11 @@ function SpanRow({ node, depth, onSelect, selectedId }: {
       >
         <span style={{ width: 8, height: 8, borderRadius: 4, background: color, flexShrink: 0 }} />
         <span style={{ flex: 1, fontFamily: 'ui-monospace, monospace', fontSize: 13 }}>{node.label}</span>
+        {spanTokens(node.events) && (
+          <span style={{ color: '#7ec8e3', fontSize: 12 }}>
+            {spanTokens(node.events)!.input.toLocaleString()} in / {spanTokens(node.events)!.output.toLocaleString()} out
+          </span>
+        )}
         {node.duration_ms != null
           ? <span style={{ color: '#8b96a5', fontSize: 12 }}>{node.duration_ms.toFixed(1)} ms</span>
           : <span style={{ color: '#e5484d', fontSize: 12 }}>open / crashed</span>}
@@ -196,6 +201,17 @@ function RunDetail({ runId, otherRuns }: { runId: string; otherRuns: ApiRun[] })
       <h3 style={{ fontSize: 13, color: '#8b96a5', margin: '16px 0 8px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
         {selected ? `Span: ${selected.label}` : 'Run-level events'}
       </h3>
+      {selected && (() => {
+        const tk = spanTokens(selected.events);
+        if (!tk) return null;
+        const model = selected.events.find((e) => e.kind === 'llm.response')?.model;
+        return (
+          <div style={{ color: '#7ec8e3', fontSize: 12, marginBottom: 8, fontFamily: 'ui-monospace, monospace' }}>
+            {model ? `${model} · ` : ''}{tk.input.toLocaleString()} input / {tk.output.toLocaleString()} output tokens
+            {tk.cached > 0 ? ` (${tk.cached.toLocaleString()} cached)` : ''}
+          </div>
+        );
+      })()}
       <div style={{ background: '#0f141c', borderRadius: 8, padding: 12 }}>
         <EventInspector events={selected ? selected.events : runEvents} />
       </div>
