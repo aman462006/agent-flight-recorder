@@ -11,9 +11,12 @@ Two ways to deploy, both free tiers:
 
 Honest limits, stated first:
 
-- Serverless SQLite lives in `/tmp` (Vercel) or resets on restart/redeploy
-  (Render free tier): recorded runs disappear when the instance recycles.
-  Fine for a demo; swap in Postgres before anything real.
+- Without `DATABASE_URL`, storage is SQLite in `/tmp` (Vercel) or a file
+  that resets on restart/redeploy (Render free tier): recorded runs
+  disappear when the instance recycles. Fine for a demo.
+- WITH `DATABASE_URL` set, the API stores traces in Postgres and they
+  survive restarts, sleeps and redeploys. This is the supported path for
+  anything real (see section 4).
 - `VITE_API_URL` is only needed if you want the dashboard to talk to a
   DIFFERENT API (e.g. the Render one); leave it unset for the single
   Vercel project.
@@ -36,7 +39,32 @@ Honest limits, stated first:
    root and calls the same-origin API (`/health`, `/runs`, ...).
 3. Deploy, open the dashboard, pick a run, hit Investigate.
 
-## 3. Seeding a demo run
+## 3. Persistent storage with Postgres (free Neon tier)
+
+The API picks its store automatically at boot:
+
+- `DATABASE_URL` set → Postgres (`afrec/pg_store.py`, psycopg 3). Idempotent
+  ingest, same schema and semantics as SQLite.
+- `DATABASE_URL` unset → SQLite file (ephemeral on free tiers).
+
+To make runs survive forever on the free tier (Neon's free plan has an
+always-available Postgres):
+
+1. Create a free account at neon.tech, create a project, copy the
+   connection string (it looks like
+   `postgresql://user:password@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`).
+2. On Render: afrec-api service → Environment → add `DATABASE_URL` with
+   that connection string. (On Vercel: Settings → Environment Variables.)
+3. Redeploy. Verify: `curl https://<api-url>/health` now returns
+   `"db": "postgres"`.
+4. Done. Old runs are gone (the SQLite file was ephemeral), but every run
+   streamed from now on persists across restarts and redeploys.
+
+The connection string is a secret: set it in the platform's environment
+variables, never in code or docs. `/health` reports only the store kind
+(`postgres`), never the connection details.
+
+## 4. Seeding a demo run
 
 The API starts empty. Seed the demo agent's good + bad runs so the
 Investigation panel has something to chew on:
@@ -49,7 +77,7 @@ python -m demo_agent.seed_remote --api https://<api-url>
 (This seeds a good run and the stale-figure bad run through the public
 ingestion API; see the script for the exact calls.)
 
-## 4. Demo video script (when recording)
+## 5. Demo video script (when recording)
 
 1. Local dashboard or Vercel: run list, pick the stale-figure bad run.
    Looks "completed". Everything green. No visible problem.

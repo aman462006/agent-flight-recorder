@@ -183,6 +183,51 @@ function AboutPage() {
         ))}
       </div>
 
+
+      <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.4, margin: '40px 0 6px' }}>Use it with your own agent</h2>
+      <p style={{ fontSize: 14, color: T.soft, margin: '0 0 16px' }}>
+        The SDK is two imports. Point it at this hosted API, or clone the repo and run the
+        ingestion API yourself with a DATABASE_URL for persistent storage. Your agent's
+        logic does not change, the recorder just watches it work.
+      </p>
+      <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 12 }}>
+        <div style={{
+          padding: '10px 16px', borderBottom: '1px solid #eef1f7', fontSize: 12,
+          fontWeight: 700, color: T.soft, background: '#fafbfe',
+        }}>Python, with any LLM provider</div>
+        <pre style={{
+          margin: 0, padding: '16px 18px', overflowX: 'auto', fontSize: 12.2, lineHeight: 1.7,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', color: T.text,
+        }}>{`from afrec import Recorder, HttpStore
+
+# hosted API, or your own deployment's URL
+rec = Recorder(store=HttpStore("https://afrec-api.onrender.com"))
+
+with rec.run("my-agent-task") as run:
+    with run.llm_call("gpt-4o-mini", [{"role": "user", "content": prompt}]) as span:
+        reply = my_llm(prompt)          # your model call, unchanged
+        span.result(reply,
+                    input_tokens=usage.prompt_tokens,
+                    output_tokens=usage.completion_tokens)
+    with run.tool_call("search", {"query": q}) as tool:
+        tool.result(my_search(q))       # tool spans work the same way`}</pre>
+      </div>
+      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+        <div style={{
+          padding: '10px 16px', borderBottom: '1px solid #eef1f7', fontSize: 12,
+          fontWeight: 700, color: T.soft, background: '#fafbfe',
+        }}>Any language: plain HTTP</div>
+        <pre style={{
+          margin: 0, padding: '16px 18px', overflowX: 'auto', fontSize: 12.2, lineHeight: 1.7,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', color: T.text,
+        }}>{`POST /runs    {"run_id": "run_1", "task": "...", "started_at": 1760000000}
+POST /events  {"run_id": "run_1", "kind": "llm.request",
+               "timestamp": 1760000001, "data": {"model": "gpt-4o-mini"}}
+
+# both endpoints are idempotent — retries never duplicate events.
+# GET /runs/{id} returns the full ordered trace back.`}</pre>
+      </div>
+
       <div style={{ ...card, padding: 20, marginTop: 24, borderLeft: `3px solid ${T.accent}` }}>
         <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>A note on honesty</div>
         <div style={{ fontSize: 13, color: T.soft, lineHeight: 1.65 }}>

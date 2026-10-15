@@ -33,13 +33,22 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from afrec.pg_store import PostgresStore, StoreError
 from afrec.recorder import SqliteStore, redact
 
-# Serverless filesystems are read-only except /tmp, and each instance is
-# ephemeral — the SQLite file must live in /tmp there (swap to Postgres
-# for persistence across instances).
+# Storage: Postgres when DATABASE_URL is set (traces survive free-tier
+# restarts — /tmp is wiped when a Render instance sleeps or a Vercel
+# instance recycles), otherwise SQLite in /tmp (ephemeral, dev-only).
 _DEFAULT_DB = "/tmp/afrec_api.sqlite3" if os.environ.get("VERCEL") else "afrec_api.sqlite3"
 DB_PATH = os.environ.get("AFREC_API_DB", _DEFAULT_DB)
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+
+if DATABASE_URL:
+    store: Any = PostgresStore(DATABASE_URL)
+    DB_LABEL = "postgres"
+else:
+    store = SqliteStore(DB_PATH)
+    DB_LABEL = DB_PATH
 
 app = FastAPI(title="Agent Flight Recorder — Ingestion API", version="0.2.0")
 
@@ -92,8 +101,8 @@ class EventIn(BaseModel):
 def health() -> Dict[str, Any]:
     try:
         runs = store.list_runs()
-        return {"ok": True, "runs": len(runs), "db": DB_PATH}
-    except sqlite3.Error as e:
+        return {"ok": True, "runs": len(runs), "db": DB_LABEL}
+    except (sqlite3.Error, StoreError) as e:
         raise HTTPException(status_code=503, detail=f"store unavailable: {e}")
 
 
@@ -108,7 +117,7 @@ def create_run(run: RunIn) -> Dict[str, Any]:
     )
     try:
         store.save_run(meta)
-    except sqlite3.Error as e:
+    except (sqlite3.Error, StoreError) as e:
         raise HTTPException(status_code=503, detail=f"store unavailable: {e}")
     return {"ok": True, "run_id": run.run_id}
 
@@ -131,7 +140,7 @@ def ingest_event(ev: EventIn) -> Dict[str, Any]:
     )
     try:
         store.save_event(event)
-    except sqlite3.Error as e:
+    except (sqlite3.Error, StoreError) as e:
         raise HTTPException(status_code=503, detail=f"store unavailable: {e}")
     return {"ok": True, "event_id": event.event_id}
 
