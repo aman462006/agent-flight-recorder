@@ -81,7 +81,9 @@ Stable across seeds 7 and 99. Full JSON report: `bench/results/`
 
 The circularity above is exactly why `bench/real/` exists. A tool-using
 agent (search + calculator) runs 30 varied tasks against a REAL LLM
-(Gemini, key from the environment, never hardcoded), every trace is
+(Groq `llama-3.3-70b-versatile` via REST — the same provider RevGuard
+runs in production — with Gemini supported as a fallback; key from the
+environment, never hardcoded), every trace is
 saved, a HUMAN labels each one success/failure via `python -m
 bench.real.label` (nothing auto-labels), and `python -m
 bench.real.evaluate` scores the UNCHANGED investigator against those
@@ -89,8 +91,8 @@ labels — precision, recall, every miss and false positive, by trace ID.
 Rules are not tuned to the labelled set.
 
 Current state, verbatim as of 2026-10-15: no traces have been collected
-(collection needs a valid `GEMINI_API_KEY`; the keys in the build
-environment are placeholders that the API rejects) and no labels exist.
+(collection needs a `GROQ_API_KEY` in the environment; none is present
+yet) and no labels exist.
 The real output of `python -m bench.real.evaluate` right now:
 
 ```
@@ -98,8 +100,8 @@ no labels.json — run  python -m bench.real.label  first.
 (labels are human-only in this pipeline; nothing auto-labels.)
 ```
 
-Traces: 0 collected. Model: `gemini-2.0-flash` (planned, configurable
-via `AFREC_REAL_MODEL`). Known weaknesses: none measured yet — this list
+Traces: 0 collected. Model: `llama-3.3-70b-versatile` on Groq
+(configurable via `AFREC_REAL_MODEL`). Known weaknesses: none measured yet — this list
 will be filled from actual misses with trace IDs once labelled traces
 exist, and if recall is low, the number stays low here. The README will
 quote the real table, not a flattering one.

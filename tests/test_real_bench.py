@@ -195,3 +195,44 @@ def test_evaluate_with_no_labels_is_not_fake(monkeypatch, capsys):
     ev.main()
     out = capsys.readouterr().out
     assert "no labels" in out.lower()  # says so plainly instead of inventing numbers
+
+
+def test_make_llm_prefers_groq_then_gemini(monkeypatch):
+    from bench.real import agent as A
+    # no keys at all -> clear error, never a silent fake
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="No LLM provider key"):
+        A.make_llm()
+    # groq wins when both are present (RevGuard's production provider)
+    monkeypatch.setenv("GROQ_API_KEY", "test-groq")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini")
+    llm = A.make_llm()
+    assert isinstance(llm, A.GroqLLM)
+    assert llm.model == "llama-3.3-70b-versatile"
+    # gemini fallback when only gemini is present
+    monkeypatch.delenv("GROQ_API_KEY")
+    assert isinstance(A.make_llm(), A.GeminiLLM)
+
+
+def test_groqllm_parses_response_shape():
+    from bench.real import agent as A
+    import urllib.request, urllib.error, io
+    fake_body = {"choices": [{"message": {"content": '{"answer": "ok"}'}}],
+                 "usage": {"prompt_tokens": 12, "completion_tokens": 7},
+                 "model": "llama-3.3-70b-versatile"}
+    class FakeResp(io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    captured = {}
+    def fake_urlopen(req, timeout=None):
+        captured["auth"] = req.headers.get("Authorization", "")
+        return FakeResp(json.dumps(fake_body).encode())
+    monkey = pytest.MonkeyPatch()
+    monkey.setattr(urllib.request, "urlopen", fake_urlopen)
+    llm = A.GroqLLM(api_key="k-test")
+    out = llm.complete("hi")
+    monkey.undo()
+    assert out["text"] == '{"answer": "ok"}'
+    assert out["input_tokens"] == 12 and out["output_tokens"] == 7
+    assert captured["auth"] == "Bearer k-test"

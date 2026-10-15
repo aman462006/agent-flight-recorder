@@ -11,9 +11,11 @@ The environment (the search corpus) is fixed and honest about its own
 dates: some entities carry BOTH an old and a fresh record, so stale-data
 traps exist but nothing forces the model to fall into one.
 
-Provider: Google Gemini via REST (no SDK dependency), key read from the
-GEMINI_API_KEY environment variable. NEVER hardcoded. Model name and
-temperature are configurable so runs are reproducible and recorded.
+Provider: Groq (OpenAI-compatible REST, matching RevGuard's production
+setup, Llama 3.3), key read from the GROQ_API_KEY environment variable,
+NEVER hardcoded. Gemini remains supported via GEMINI_API_KEY. make_llm()
+auto-detects which provider to use. Model name and temperature are
+configurable so runs are reproducible and recorded.
 """
 
 from __future__ import annotations
@@ -93,14 +95,75 @@ def calculator(expression: str) -> float:
 # The LLM: Gemini REST. Key from env, never hardcoded, never logged.
 # ---------------------------------------------------------------------------
 
-DEFAULT_MODEL = os.environ.get("AFREC_REAL_MODEL", "gemini-2.0-flash")
+DEFAULT_GROQ_MODEL = os.environ.get("AFREC_REAL_MODEL", "llama-3.3-70b-versatile")
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+
+
+class GroqLLM:
+    """Groq via its OpenAI-compatible REST endpoint (no SDK dependency).
+    The provider RevGuard uses in production; keys from GROQ_API_KEY only."""
+
+    def __init__(self, model: str = DEFAULT_GROQ_MODEL, temperature: float = 0.7,
+                 api_key: Optional[str] = None):
+        self.model = model
+        self.temperature = temperature
+        self.api_key = api_key or os.environ.get("GROQ_API_KEY")
+        if not self.api_key:
+            raise RuntimeError("GROQ_API_KEY is not set. Export it and retry.")
+
+    def complete(self, prompt: str) -> Dict[str, Any]:
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": self.temperature,
+            "max_tokens": 1024,
+        }
+        req = urllib.request.Request(
+            GROQ_URL, data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {self.api_key}"},
+            method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                body = json.load(r)
+        except urllib.error.HTTPError as e:
+            detail = ""
+            try:
+                detail = e.read().decode()[:200]
+            except Exception:
+                pass
+            if e.code == 401:
+                raise RuntimeError(
+                    "The provider rejected the credentials (401). The "
+                    "environment needs a working key for the selected "
+                    "provider — keys are read from the environment only.") from e
+            raise
+        usage = body.get("usage", {})
+        text = body.get("choices", [{}])[0].get("message", {}).get("content", "") or ""
+        return {"text": text,
+                "input_tokens": usage.get("prompt_tokens"),
+                "output_tokens": usage.get("completion_tokens"),
+                "model": body.get("model", self.model)}
+
+
+def make_llm(temperature: float = 0.7) -> "GroqLLM | GeminiLLM":
+    """Auto-detect the provider from the environment. Groq (RevGuard's
+    production provider) is preferred; Gemini is the fallback."""
+    if os.environ.get("GROQ_API_KEY"):
+        return GroqLLM(temperature=temperature)
+    if os.environ.get("GEMINI_API_KEY"):
+        return GeminiLLM(model=DEFAULT_GEMINI_MODEL, temperature=temperature)
+    raise RuntimeError(
+        "No LLM provider key in the environment. Set GROQ_API_KEY "
+        "(preferred) or GEMINI_API_KEY and retry.")
 
 
 class GeminiLLM:
     """Thin REST client. Returns raw text + token usage, raises on API errors."""
 
-    def __init__(self, model: str = DEFAULT_MODEL, temperature: float = 0.7,
+    def __init__(self, model: str = DEFAULT_GEMINI_MODEL, temperature: float = 0.7,
                  api_key: Optional[str] = None):
         self.model = model
         self.temperature = temperature
@@ -262,6 +325,6 @@ def run_task(task: str, llm: GeminiLLM, trace_dir: Optional[str] = None,
 
 def run_task_from_config(task_cfg: Dict[str, Any], model: Optional[str] = None,
                          temperature: Optional[float] = None) -> Dict[str, Any]:
-    llm = GeminiLLM(model=model or DEFAULT_MODEL,
+    llm = GeminiLLM(model=model or DEFAULT_GEMINI_MODEL,
                     temperature=temperature if temperature is not None else 0.7)
     return run_task(task_cfg["task"], llm, task_id=task_cfg.get("id"))
