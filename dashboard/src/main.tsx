@@ -460,11 +460,9 @@ function DashboardPage({ selectedRun, onSelectRun }: { selectedRun: string | nul
   useEffect(refresh, []);
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 59px)' }}>
-      <aside style={{
-        width: 300, flexShrink: 0, borderRight: `1px solid ${T.border}`, background: '#fff',
-        overflowY: 'auto', padding: 12,
-      }}>
+    <div className="afrec-shell">
+      <ResponsiveStyle />
+      <aside className="afrec-sidebar">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <span style={{ ...sectionLabel, margin: 0 }}>Runs</span>
           <button onClick={refresh} style={{ ...btnGhost, padding: '4px 10px', fontSize: 11 }}>↻ Refresh</button>
@@ -487,7 +485,7 @@ function DashboardPage({ selectedRun, onSelectRun }: { selectedRun: string | nul
         ))}
         {runs?.length === 0 && <div style={{ color: T.faint, fontSize: 13 }}>No runs yet. Record one with the SDK.</div>}
       </aside>
-      <main style={{ flex: 1, overflow: 'hidden' }}>
+      <main className="afrec-main">
         {selectedRun
           ? <RunDetail runId={selectedRun} otherRuns={(runs ?? []).filter((r) => r.run_id !== selectedRun)} />
           : <div style={{ padding: 20, color: T.faint }}>Select a run from the left to inspect it.</div>}
@@ -521,6 +519,27 @@ function App() {
       )}
     </div>
   );
+}
+
+const RESPONSIVE_CSS = `
+  .afrec-shell { display: flex; height: calc(100vh - 59px); }
+  .afrec-sidebar {
+    width: 300px; flex-shrink: 0; border-right: 1px solid #e4e8f2; background: #fff;
+    overflow-y: auto; padding: 12px;
+  }
+  .afrec-main { flex: 1; overflow: hidden; }
+  @media (max-width: 800px) {
+    .afrec-shell { flex-direction: column; height: auto; }
+    .afrec-sidebar {
+      width: 100%; max-height: 240px; border-right: none; border-bottom: 1px solid #e4e8f2;
+    }
+    .afrec-main { overflow: visible; }
+    .afrec-main > div { height: auto; }
+  }
+`;
+
+function ResponsiveStyle() {
+  return <style>{RESPONSIVE_CSS}</style>;
 }
 
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
