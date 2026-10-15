@@ -5,5 +5,6 @@ __pycache__/
 .env
 node_modules/
 dist/
-bench/real/traces/
-bench/real/labels.json
+# NOTE: bench/real/traces/ IS committed — the 30 collected real traces are the
+# benchmark corpus; without them the human-labelling + evaluation pipeline has
+# nothing to work on. bench/real/labels.json is committed too once labelled.

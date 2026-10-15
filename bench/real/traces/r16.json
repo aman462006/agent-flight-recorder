@@ -1,0 +1,251 @@
+{
+ "task_id": "r16",
+ "task": "Which company in the corpus had the highest revenue in 2025?",
+ "model": "qwen/qwen3.8-27b",
+ "temperature": 0.7,
+ "collected_at": "2026-10-15T15:19:05+0000",
+ "run_id": "run_1792077524683_edf00a7b",
+ "run_meta": {
+  "run_id": "run_1792077524683_edf00a7b",
+  "task": "Which company in the corpus had the highest revenue in 2025?",
+  "status": "completed",
+  "tags": {
+   "bench": "real",
+   "model": "qwen/qwen3.8-27b",
+   "temperature": 0.7
+  }
+ },
+ "events": [
+  {
+   "event_id": "evt_1792077524685_d7c8f740",
+   "kind": "run.start",
+   "span_id": null,
+   "parent_span_id": null,
+   "timestamp": 1792077524.6858292,
+   "t_offset_ms": 1.87,
+   "data": {
+    "task": "Which company in the corpus had the highest revenue in 2025?",
+    "tags": {
+     "bench": "real",
+     "model": "qwen/qwen3.8-27b",
+     "temperature": 0.7
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077524686_b4fa4f9d",
+   "kind": "span.start",
+   "span_id": "span_1792077524686_13a8e43e",
+   "parent_span_id": null,
+   "timestamp": 1792077524.6863732,
+   "t_offset_ms": 2.41,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: Which company in the corpus had the highest revenue in 2025?"
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077524848_05b9c2ba",
+   "kind": "llm.response",
+   "span_id": "span_1792077524686_13a8e43e",
+   "parent_span_id": "span_1792077524686_13a8e43e",
+   "timestamp": 1792077524.8480322,
+   "t_offset_ms": 164.08,
+   "data": {
+    "payload": "{\"tool\": \"search\", \"args\": {\"query\": \"highest revenue 2025 company\"}}"
+   },
+   "input_tokens": 196,
+   "output_tokens": 23,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077524848_2dd16218",
+   "kind": "span.end",
+   "span_id": "span_1792077524686_13a8e43e",
+   "parent_span_id": null,
+   "timestamp": 1792077524.8486936,
+   "t_offset_ms": 164.73,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 162.32
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077524849_06193d53",
+   "kind": "span.start",
+   "span_id": "span_1792077524849_7e7ceeef",
+   "parent_span_id": null,
+   "timestamp": 1792077524.8494809,
+   "t_offset_ms": 165.52,
+   "data": {
+    "label": "tool:search",
+    "tool": "search",
+    "arguments": {
+     "query": "highest revenue 2025 company"
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077524850_37642740",
+   "kind": "tool.result",
+   "span_id": "span_1792077524849_7e7ceeef",
+   "parent_span_id": "span_1792077524849_7e7ceeef",
+   "timestamp": 1792077524.8500729,
+   "t_offset_ms": 166.11,
+   "data": {
+    "payload": [
+     {
+      "company": "Vikram Solar",
+      "metric": "revenue_inr_cr",
+      "value": 3110,
+      "year": 2025
+     },
+     {
+      "company": "Waaree Energies",
+      "metric": "revenue_inr_cr",
+      "value": 5678,
+      "year": 2025
+     },
+     {
+      "company": "Adani Green",
+      "metric": "revenue_inr_cr",
+      "value": 12345,
+      "year": 2025
+     },
+     {
+      "company": "Tata Power Renewable",
+      "metric": "revenue_inr_cr",
+      "value": 8912,
+      "year": 2025
+     },
+     {
+      "company": "Renew Power",
+      "metric": "revenue_inr_cr",
+      "value": 7500,
+      "year": 2025
+     },
+     {
+      "company": "Ola Electric",
+      "metric": "revenue_inr_cr",
+      "value": 4500,
+      "year": 2025
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077524850_ac8419aa",
+   "kind": "span.end",
+   "span_id": "span_1792077524849_7e7ceeef",
+   "parent_span_id": null,
+   "timestamp": 1792077524.8505979,
+   "t_offset_ms": 166.64,
+   "data": {
+    "label": "tool:search",
+    "duration_ms": 1.11
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077524851_80342b64",
+   "kind": "span.start",
+   "span_id": "span_1792077524851_3cdebe24",
+   "parent_span_id": null,
+   "timestamp": 1792077524.8511646,
+   "t_offset_ms": 167.21,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: Which company in the corpus had the highest revenue in 2025?\n\nTool search returned: [{\"company\": \"Vikram Solar\", \"metric\": \"revenue_inr_cr\", \"value\": 3110, \"year\": 2025}, {\"company\": \"Waaree Energies\", \"metric\": \"revenue_inr_cr\", \"value\": 5678, \"year\": 2025}, {\"company\": \"Adani Green\", \"metric\": \"revenue_inr_cr\", \"value\": 12345, \"year\": 2025}, {\"company\": \"Tata Power Renewable\", \"metric\": \"revenue_inr_cr\", \"value\": 8912, \"year\": 2025}, {\"company\": \"Renew Power\", \"metric\": \"revenue_inr_cr\", \"value\": 7500, \"year\": 2025}, {\"company\": \"Ola Electric\", \"metric\": \"revenue_inr_cr\", \"value\": 4500, \"year\": 2025}]"
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077545529_41d28d47",
+   "kind": "llm.response",
+   "span_id": "span_1792077524851_3cdebe24",
+   "parent_span_id": "span_1792077524851_3cdebe24",
+   "timestamp": 1792077545.5292032,
+   "t_offset_ms": 20845.25,
+   "data": {
+    "payload": "{\"answer\": \"Adani Green had the highest revenue in 2025 at \u20b912,345 crore.\"}"
+   },
+   "input_tokens": 422,
+   "output_tokens": 29,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077545529_a0249f48",
+   "kind": "span.end",
+   "span_id": "span_1792077524851_3cdebe24",
+   "parent_span_id": null,
+   "timestamp": 1792077545.529902,
+   "t_offset_ms": 20845.94,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 20678.73
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077545531_761d3bac",
+   "kind": "run.end",
+   "span_id": null,
+   "parent_span_id": null,
+   "timestamp": 1792077545.5310302,
+   "t_offset_ms": 20847.07,
+   "data": {
+    "status": "completed"
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  }
+ ],
+ "final_answer": "Adani Green had the highest revenue in 2025 at \u20b912,345 crore.",
+ "tool_calls": 1,
+ "parse_errors": 0
+}

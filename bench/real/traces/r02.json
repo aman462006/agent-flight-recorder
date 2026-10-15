@@ -1,0 +1,436 @@
+{
+ "task_id": "r02",
+ "task": "Compare Adani Green and Tata Power Renewable revenue and say which is larger, by how much INR crore.",
+ "model": "qwen/qwen3.8-27b",
+ "temperature": 0.7,
+ "collected_at": "2026-10-15T15:13:00+0000",
+ "run_id": "run_1792077179390_e2756a78",
+ "run_meta": {
+  "run_id": "run_1792077179390_e2756a78",
+  "task": "Compare Adani Green and Tata Power Renewable revenue and say which is larger, by how much INR crore.",
+  "status": "completed",
+  "tags": {
+   "bench": "real",
+   "model": "qwen/qwen3.8-27b",
+   "temperature": 0.7
+  }
+ },
+ "events": [
+  {
+   "event_id": "evt_1792077179392_c28548f1",
+   "kind": "run.start",
+   "span_id": null,
+   "parent_span_id": null,
+   "timestamp": 1792077179.3925793,
+   "t_offset_ms": 1.89,
+   "data": {
+    "task": "Compare Adani Green and Tata Power Renewable revenue and say which is larger, by how much INR crore.",
+    "tags": {
+     "bench": "real",
+     "model": "qwen/qwen3.8-27b",
+     "temperature": 0.7
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077179393_b6afabce",
+   "kind": "span.start",
+   "span_id": "span_1792077179393_afb818ad",
+   "parent_span_id": null,
+   "timestamp": 1792077179.3931594,
+   "t_offset_ms": 2.47,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: Compare Adani Green and Tata Power Renewable revenue and say which is larger, by how much INR crore."
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077179637_60ec59a0",
+   "kind": "llm.response",
+   "span_id": "span_1792077179393_afb818ad",
+   "parent_span_id": "span_1792077179393_afb818ad",
+   "timestamp": 1792077179.6370685,
+   "t_offset_ms": 246.38,
+   "data": {
+    "payload": "{\"tool\": \"search\", \"args\": {\"query\": \"Adani Green Energy revenue\"}}"
+   },
+   "input_tokens": 202,
+   "output_tokens": 20,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077179637_0b6d235c",
+   "kind": "span.end",
+   "span_id": "span_1792077179393_afb818ad",
+   "parent_span_id": null,
+   "timestamp": 1792077179.6377368,
+   "t_offset_ms": 247.05,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 244.58
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077179638_dfdeec24",
+   "kind": "span.start",
+   "span_id": "span_1792077179638_53505eaa",
+   "parent_span_id": null,
+   "timestamp": 1792077179.6384258,
+   "t_offset_ms": 247.74,
+   "data": {
+    "label": "tool:search",
+    "tool": "search",
+    "arguments": {
+     "query": "Adani Green Energy revenue"
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077179638_4f07a27b",
+   "kind": "tool.result",
+   "span_id": "span_1792077179638_53505eaa",
+   "parent_span_id": "span_1792077179638_53505eaa",
+   "timestamp": 1792077179.6389856,
+   "t_offset_ms": 248.3,
+   "data": {
+    "payload": [
+     {
+      "company": "Adani Green",
+      "metric": "revenue_inr_cr",
+      "value": 12345,
+      "year": 2025
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077179639_dc65ef03",
+   "kind": "span.end",
+   "span_id": "span_1792077179638_53505eaa",
+   "parent_span_id": null,
+   "timestamp": 1792077179.6394887,
+   "t_offset_ms": 248.8,
+   "data": {
+    "label": "tool:search",
+    "duration_ms": 1.06
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077179640_c780432e",
+   "kind": "span.start",
+   "span_id": "span_1792077179640_d73087fe",
+   "parent_span_id": null,
+   "timestamp": 1792077179.6400375,
+   "t_offset_ms": 249.35,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: Compare Adani Green and Tata Power Renewable revenue and say which is larger, by how much INR crore.\n\nTool search returned: [{\"company\": \"Adani Green\", \"metric\": \"revenue_inr_cr\", \"value\": 12345, \"year\": 2025}]"
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077179896_5f170504",
+   "kind": "llm.response",
+   "span_id": "span_1792077179640_d73087fe",
+   "parent_span_id": "span_1792077179640_d73087fe",
+   "timestamp": 1792077179.8960807,
+   "t_offset_ms": 505.39,
+   "data": {
+    "payload": "{\"tool\": \"search\", \"args\": {\"query\": \"Tata Power Renewable revenue INR crore 2025\"}}"
+   },
+   "input_tokens": 244,
+   "output_tokens": 28,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077179896_33d742b0",
+   "kind": "span.end",
+   "span_id": "span_1792077179640_d73087fe",
+   "parent_span_id": null,
+   "timestamp": 1792077179.8966997,
+   "t_offset_ms": 506.01,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 256.66
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077179897_aca113fe",
+   "kind": "span.start",
+   "span_id": "span_1792077179897_da9ddd67",
+   "parent_span_id": null,
+   "timestamp": 1792077179.8973746,
+   "t_offset_ms": 506.68,
+   "data": {
+    "label": "tool:search",
+    "tool": "search",
+    "arguments": {
+     "query": "Tata Power Renewable revenue INR crore 2025"
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077179898_ae4e2bcf",
+   "kind": "tool.result",
+   "span_id": "span_1792077179897_da9ddd67",
+   "parent_span_id": "span_1792077179897_da9ddd67",
+   "timestamp": 1792077179.8980258,
+   "t_offset_ms": 507.34,
+   "data": {
+    "payload": [
+     {
+      "company": "Tata Power Renewable",
+      "metric": "revenue_inr_cr",
+      "value": 8912,
+      "year": 2025
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077179898_785c3508",
+   "kind": "span.end",
+   "span_id": "span_1792077179897_da9ddd67",
+   "parent_span_id": null,
+   "timestamp": 1792077179.8985264,
+   "t_offset_ms": 507.84,
+   "data": {
+    "label": "tool:search",
+    "duration_ms": 1.15
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077179899_bdea69e1",
+   "kind": "span.start",
+   "span_id": "span_1792077179899_3fdb9b79",
+   "parent_span_id": null,
+   "timestamp": 1792077179.899073,
+   "t_offset_ms": 508.38,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: Compare Adani Green and Tata Power Renewable revenue and say which is larger, by how much INR crore.\n\nTool search returned: [{\"company\": \"Adani Green\", \"metric\": \"revenue_inr_cr\", \"value\": 12345, \"year\": 2025}]\n\nTool search returned: [{\"company\": \"Tata Power Renewable\", \"metric\": \"revenue_inr_cr\", \"value\": 8912, \"year\": 2025}]"
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077180105_fde0bb1e",
+   "kind": "llm.response",
+   "span_id": "span_1792077179899_3fdb9b79",
+   "parent_span_id": "span_1792077179899_3fdb9b79",
+   "timestamp": 1792077180.1054444,
+   "t_offset_ms": 714.75,
+   "data": {
+    "payload": "{\"tool\": \"calculator\", \"args\": {\"expression\": \"12345 - 8912\"}}"
+   },
+   "input_tokens": 286,
+   "output_tokens": 26,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077180106_d26367ef",
+   "kind": "span.end",
+   "span_id": "span_1792077179899_3fdb9b79",
+   "parent_span_id": null,
+   "timestamp": 1792077180.1060271,
+   "t_offset_ms": 715.34,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 206.95
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077180106_690c5ba4",
+   "kind": "span.start",
+   "span_id": "span_1792077180106_9214a6fb",
+   "parent_span_id": null,
+   "timestamp": 1792077180.1067348,
+   "t_offset_ms": 716.04,
+   "data": {
+    "label": "tool:calculator",
+    "tool": "calculator",
+    "arguments": {
+     "expression": "12345 - 8912"
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077180107_9dcf3831",
+   "kind": "tool.result",
+   "span_id": "span_1792077180106_9214a6fb",
+   "parent_span_id": "span_1792077180106_9214a6fb",
+   "timestamp": 1792077180.107264,
+   "t_offset_ms": 716.57,
+   "data": {
+    "payload": {
+     "value": 3433
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077180107_62e6d2a3",
+   "kind": "span.end",
+   "span_id": "span_1792077180106_9214a6fb",
+   "parent_span_id": null,
+   "timestamp": 1792077180.1077967,
+   "t_offset_ms": 717.11,
+   "data": {
+    "label": "tool:calculator",
+    "duration_ms": 1.06
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077180108_b68aca63",
+   "kind": "span.start",
+   "span_id": "span_1792077180108_6ea0b1c4",
+   "parent_span_id": null,
+   "timestamp": 1792077180.108329,
+   "t_offset_ms": 717.64,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: Compare Adani Green and Tata Power Renewable revenue and say which is larger, by how much INR crore.\n\nTool search returned: [{\"company\": \"Adani Green\", \"metric\": \"revenue_inr_cr\", \"value\": 12345, \"year\": 2025}]\n\nTool search returned: [{\"company\": \"Tata Power Renewable\", \"metric\": \"revenue_inr_cr\", \"value\": 8912, \"year\": 2025}]\n\nTool calculator returned: {\"value\": 3433}"
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077180347_6b30ab1b",
+   "kind": "llm.response",
+   "span_id": "span_1792077180108_6ea0b1c4",
+   "parent_span_id": "span_1792077180108_6ea0b1c4",
+   "timestamp": 1792077180.3474069,
+   "t_offset_ms": 956.72,
+   "data": {
+    "payload": "{\"answer\": \"Adani Green has the larger revenue at 12,345 INR crore vs Tata Power Renewable's 8,912 INR crore (both 2025), a difference of 3,433 INR crore in favor of Adani Green.\"}"
+   },
+   "input_tokens": 300,
+   "output_tokens": 65,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077180348_ee1dec65",
+   "kind": "span.end",
+   "span_id": "span_1792077180108_6ea0b1c4",
+   "parent_span_id": null,
+   "timestamp": 1792077180.348073,
+   "t_offset_ms": 957.38,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 239.74
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077180349_2cc62792",
+   "kind": "run.end",
+   "span_id": null,
+   "parent_span_id": null,
+   "timestamp": 1792077180.3491623,
+   "t_offset_ms": 958.47,
+   "data": {
+    "status": "completed"
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  }
+ ],
+ "final_answer": "Adani Green has the larger revenue at 12,345 INR crore vs Tata Power Renewable's 8,912 INR crore (both 2025), a difference of 3,433 INR crore in favor of Adani Green.",
+ "tool_calls": 3,
+ "parse_errors": 0
+}

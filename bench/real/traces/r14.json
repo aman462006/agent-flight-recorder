@@ -1,0 +1,691 @@
+{
+ "task_id": "r14",
+ "task": "How many customers does Razorpay have? Answer from the corpus only.",
+ "model": "qwen/qwen3.8-27b",
+ "temperature": 0.7,
+ "collected_at": "2026-10-15T15:18:42+0000",
+ "run_id": "run_1792077500808_29d99ca0",
+ "run_meta": {
+  "run_id": "run_1792077500808_29d99ca0",
+  "task": "How many customers does Razorpay have? Answer from the corpus only.",
+  "status": "completed",
+  "tags": {
+   "bench": "real",
+   "model": "qwen/qwen3.8-27b",
+   "temperature": 0.7
+  }
+ },
+ "events": [
+  {
+   "event_id": "evt_1792077500810_d0751923",
+   "kind": "run.start",
+   "span_id": null,
+   "parent_span_id": null,
+   "timestamp": 1792077500.8106525,
+   "t_offset_ms": 1.77,
+   "data": {
+    "task": "How many customers does Razorpay have? Answer from the corpus only.",
+    "tags": {
+     "bench": "real",
+     "model": "qwen/qwen3.8-27b",
+     "temperature": 0.7
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077500811_05e1d6db",
+   "kind": "span.start",
+   "span_id": "span_1792077500811_cd973550",
+   "parent_span_id": null,
+   "timestamp": 1792077500.8111932,
+   "t_offset_ms": 2.31,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: How many customers does Razorpay have? Answer from the corpus only."
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501006_961cf781",
+   "kind": "llm.response",
+   "span_id": "span_1792077500811_cd973550",
+   "parent_span_id": "span_1792077500811_cd973550",
+   "timestamp": 1792077501.0063028,
+   "t_offset_ms": 197.42,
+   "data": {
+    "payload": "{\"tool\": \"search\", \"args\": {\"query\": \"Razorpay number of customers\"}}"
+   },
+   "input_tokens": 194,
+   "output_tokens": 21,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077501006_8df5cff7",
+   "kind": "span.end",
+   "span_id": "span_1792077500811_cd973550",
+   "parent_span_id": null,
+   "timestamp": 1792077501.006994,
+   "t_offset_ms": 198.11,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 195.8
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501007_189b4996",
+   "kind": "span.start",
+   "span_id": "span_1792077501007_e54d33e8",
+   "parent_span_id": null,
+   "timestamp": 1792077501.0076659,
+   "t_offset_ms": 198.79,
+   "data": {
+    "label": "tool:search",
+    "tool": "search",
+    "arguments": {
+     "query": "Razorpay number of customers"
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501008_b52e7363",
+   "kind": "tool.result",
+   "span_id": "span_1792077501007_e54d33e8",
+   "parent_span_id": "span_1792077501007_e54d33e8",
+   "timestamp": 1792077501.0082166,
+   "t_offset_ms": 199.34,
+   "data": {
+    "payload": [
+     {
+      "company": "Razorpay",
+      "metric": "tpv_inr_cr",
+      "value": 400000,
+      "year": 2024
+     },
+     {
+      "company": "Razorpay",
+      "metric": "valuation_usd_b",
+      "value": 7.5,
+      "year": 2024
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501008_4e32e9de",
+   "kind": "span.end",
+   "span_id": "span_1792077501007_e54d33e8",
+   "parent_span_id": null,
+   "timestamp": 1792077501.00882,
+   "t_offset_ms": 199.94,
+   "data": {
+    "label": "tool:search",
+    "duration_ms": 1.15
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501009_7aa2fbeb",
+   "kind": "span.start",
+   "span_id": "span_1792077501009_8b25208d",
+   "parent_span_id": null,
+   "timestamp": 1792077501.0093749,
+   "t_offset_ms": 200.49,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: How many customers does Razorpay have? Answer from the corpus only.\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]"
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501204_3b66bd53",
+   "kind": "llm.response",
+   "span_id": "span_1792077501009_8b25208d",
+   "parent_span_id": "span_1792077501009_8b25208d",
+   "timestamp": 1792077501.2046146,
+   "t_offset_ms": 395.74,
+   "data": {
+    "payload": "{\"tool\": \"search\", \"args\": {\"query\": \"Razorpay number of customers\"}}"
+   },
+   "input_tokens": 271,
+   "output_tokens": 21,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077501205_f719f7f0",
+   "kind": "span.end",
+   "span_id": "span_1792077501009_8b25208d",
+   "parent_span_id": null,
+   "timestamp": 1792077501.2052934,
+   "t_offset_ms": 396.41,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 195.92
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501206_cfb21eb1",
+   "kind": "span.start",
+   "span_id": "span_1792077501206_d358e80d",
+   "parent_span_id": null,
+   "timestamp": 1792077501.2060134,
+   "t_offset_ms": 397.13,
+   "data": {
+    "label": "tool:search",
+    "tool": "search",
+    "arguments": {
+     "query": "Razorpay number of customers"
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501206_3fb5b96b",
+   "kind": "tool.result",
+   "span_id": "span_1792077501206_d358e80d",
+   "parent_span_id": "span_1792077501206_d358e80d",
+   "timestamp": 1792077501.2066352,
+   "t_offset_ms": 397.76,
+   "data": {
+    "payload": [
+     {
+      "company": "Razorpay",
+      "metric": "tpv_inr_cr",
+      "value": 400000,
+      "year": 2024
+     },
+     {
+      "company": "Razorpay",
+      "metric": "valuation_usd_b",
+      "value": 7.5,
+      "year": 2024
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501207_4cda8ff8",
+   "kind": "span.end",
+   "span_id": "span_1792077501206_d358e80d",
+   "parent_span_id": null,
+   "timestamp": 1792077501.2071517,
+   "t_offset_ms": 398.27,
+   "data": {
+    "label": "tool:search",
+    "duration_ms": 1.14
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501207_4c44fc40",
+   "kind": "span.start",
+   "span_id": "span_1792077501207_196d1e6d",
+   "parent_span_id": null,
+   "timestamp": 1792077501.2077599,
+   "t_offset_ms": 398.88,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: How many customers does Razorpay have? Answer from the corpus only.\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]"
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501505_4a721b87",
+   "kind": "llm.response",
+   "span_id": "span_1792077501207_196d1e6d",
+   "parent_span_id": "span_1792077501207_196d1e6d",
+   "timestamp": 1792077501.5052238,
+   "t_offset_ms": 696.34,
+   "data": {
+    "payload": "{\"tool\": \"search\", \"args\": {\"query\": \"Razorpay number of customers\"}}"
+   },
+   "input_tokens": 348,
+   "output_tokens": 21,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077501505_da99224f",
+   "kind": "span.end",
+   "span_id": "span_1792077501207_196d1e6d",
+   "parent_span_id": null,
+   "timestamp": 1792077501.5058968,
+   "t_offset_ms": 697.02,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 298.13
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501506_16d44f6f",
+   "kind": "span.start",
+   "span_id": "span_1792077501506_192136bc",
+   "parent_span_id": null,
+   "timestamp": 1792077501.5066276,
+   "t_offset_ms": 697.75,
+   "data": {
+    "label": "tool:search",
+    "tool": "search",
+    "arguments": {
+     "query": "Razorpay number of customers"
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501507_662be6c4",
+   "kind": "tool.result",
+   "span_id": "span_1792077501506_192136bc",
+   "parent_span_id": "span_1792077501506_192136bc",
+   "timestamp": 1792077501.5071826,
+   "t_offset_ms": 698.3,
+   "data": {
+    "payload": [
+     {
+      "company": "Razorpay",
+      "metric": "tpv_inr_cr",
+      "value": 400000,
+      "year": 2024
+     },
+     {
+      "company": "Razorpay",
+      "metric": "valuation_usd_b",
+      "value": 7.5,
+      "year": 2024
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501507_fb9f0712",
+   "kind": "span.end",
+   "span_id": "span_1792077501506_192136bc",
+   "parent_span_id": null,
+   "timestamp": 1792077501.5076888,
+   "t_offset_ms": 698.81,
+   "data": {
+    "label": "tool:search",
+    "duration_ms": 1.06
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077501508_0c03fd94",
+   "kind": "span.start",
+   "span_id": "span_1792077501508_03162085",
+   "parent_span_id": null,
+   "timestamp": 1792077501.5082462,
+   "t_offset_ms": 699.37,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: How many customers does Razorpay have? Answer from the corpus only.\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]"
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077521759_751b1aa0",
+   "kind": "llm.response",
+   "span_id": "span_1792077501508_03162085",
+   "parent_span_id": "span_1792077501508_03162085",
+   "timestamp": 1792077521.7595966,
+   "t_offset_ms": 20950.72,
+   "data": {
+    "payload": "{\"tool\": \"search\", \"args\": {\"query\": \"Razorpay number of customers\"}}"
+   },
+   "input_tokens": 425,
+   "output_tokens": 21,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077521760_7d14bff5",
+   "kind": "span.end",
+   "span_id": "span_1792077501508_03162085",
+   "parent_span_id": null,
+   "timestamp": 1792077521.760382,
+   "t_offset_ms": 20951.5,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 20252.13
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077521761_ad156e4d",
+   "kind": "span.start",
+   "span_id": "span_1792077521761_524edb84",
+   "parent_span_id": null,
+   "timestamp": 1792077521.7611086,
+   "t_offset_ms": 20952.23,
+   "data": {
+    "label": "tool:search",
+    "tool": "search",
+    "arguments": {
+     "query": "Razorpay number of customers"
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077521761_9e7f1420",
+   "kind": "tool.result",
+   "span_id": "span_1792077521761_524edb84",
+   "parent_span_id": "span_1792077521761_524edb84",
+   "timestamp": 1792077521.7617784,
+   "t_offset_ms": 20952.9,
+   "data": {
+    "payload": [
+     {
+      "company": "Razorpay",
+      "metric": "tpv_inr_cr",
+      "value": 400000,
+      "year": 2024
+     },
+     {
+      "company": "Razorpay",
+      "metric": "valuation_usd_b",
+      "value": 7.5,
+      "year": 2024
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077521762_bfd0b306",
+   "kind": "span.end",
+   "span_id": "span_1792077521761_524edb84",
+   "parent_span_id": null,
+   "timestamp": 1792077521.7623556,
+   "t_offset_ms": 20953.48,
+   "data": {
+    "label": "tool:search",
+    "duration_ms": 1.24
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077521762_fcadd23c",
+   "kind": "span.start",
+   "span_id": "span_1792077521762_22d94736",
+   "parent_span_id": null,
+   "timestamp": 1792077521.7629395,
+   "t_offset_ms": 20954.06,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: How many customers does Razorpay have? Answer from the corpus only.\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]"
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077521946_65cde894",
+   "kind": "llm.response",
+   "span_id": "span_1792077521762_22d94736",
+   "parent_span_id": "span_1792077521762_22d94736",
+   "timestamp": 1792077521.9469073,
+   "t_offset_ms": 21138.03,
+   "data": {
+    "payload": "{\"tool\": \"search\", \"args\": {\"query\": \"Razorpay customers\"}}"
+   },
+   "input_tokens": 502,
+   "output_tokens": 19,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077521947_66cc61d3",
+   "kind": "span.end",
+   "span_id": "span_1792077521762_22d94736",
+   "parent_span_id": null,
+   "timestamp": 1792077521.947619,
+   "t_offset_ms": 21138.74,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 184.68
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077521948_b6e4d610",
+   "kind": "span.start",
+   "span_id": "span_1792077521948_c30d4ca2",
+   "parent_span_id": null,
+   "timestamp": 1792077521.9483807,
+   "t_offset_ms": 21139.5,
+   "data": {
+    "label": "tool:search",
+    "tool": "search",
+    "arguments": {
+     "query": "Razorpay customers"
+    }
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077521949_ea075243",
+   "kind": "tool.result",
+   "span_id": "span_1792077521948_c30d4ca2",
+   "parent_span_id": "span_1792077521948_c30d4ca2",
+   "timestamp": 1792077521.9490235,
+   "t_offset_ms": 21140.14,
+   "data": {
+    "payload": [
+     {
+      "company": "Razorpay",
+      "metric": "tpv_inr_cr",
+      "value": 400000,
+      "year": 2024
+     },
+     {
+      "company": "Razorpay",
+      "metric": "valuation_usd_b",
+      "value": 7.5,
+      "year": 2024
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077521949_f0850bb9",
+   "kind": "span.end",
+   "span_id": "span_1792077521948_c30d4ca2",
+   "parent_span_id": null,
+   "timestamp": 1792077521.949565,
+   "t_offset_ms": 21140.68,
+   "data": {
+    "label": "tool:search",
+    "duration_ms": 1.18
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077521950_77f387e6",
+   "kind": "span.start",
+   "span_id": "span_1792077521950_0a255efd",
+   "parent_span_id": null,
+   "timestamp": 1792077521.9501681,
+   "t_offset_ms": 21141.29,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "model": "qwen/qwen3.8-27b",
+    "messages": [
+     {
+      "role": "user",
+      "content": "You are a research agent with two tools:\n\n1. search \u2014 search a company/market facts corpus.\n   Args: {\"tool\": \"search\", \"args\": {\"query\": \"...\"}}\n2. calculator \u2014 arithmetic, e.g. {\"tool\": \"calculator\", \"args\": {\"expression\": \"3500*1.2\"}}\n\nRules:\n- Reply with ONE JSON object only: either a tool call, or a final answer:\n  {\"answer\": \"...\"} \u2014 no markdown, no extra text.\n- Records carry a `year`. Use the most recent data; note conflicts when you see them.\n- If the corpus has no answer, say so in the answer. Do not invent figures.\n- You have at most 8 tool calls. Choose carefully.\n\nTask: How many customers does Razorpay have? Answer from the corpus only.\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]\n\nTool search returned: [{\"company\": \"Razorpay\", \"metric\": \"tpv_inr_cr\", \"value\": 400000, \"year\": 2024}, {\"company\": \"Razorpay\", \"metric\": \"valuation_usd_b\", \"value\": 7.5, \"year\": 2024}]"
+     }
+    ]
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077522140_7f8a534b",
+   "kind": "llm.response",
+   "span_id": "span_1792077521950_0a255efd",
+   "parent_span_id": "span_1792077521950_0a255efd",
+   "timestamp": 1792077522.14073,
+   "t_offset_ms": 21331.85,
+   "data": {
+    "payload": "{\"answer\": \"The corpus does not contain a customer count for Razorpay.\"}"
+   },
+   "input_tokens": 579,
+   "output_tokens": 18,
+   "cached_tokens": null,
+   "model": "qwen/qwen3.8-27b"
+  },
+  {
+   "event_id": "evt_1792077522141_f8562058",
+   "kind": "span.end",
+   "span_id": "span_1792077521950_0a255efd",
+   "parent_span_id": null,
+   "timestamp": 1792077522.1414177,
+   "t_offset_ms": 21332.54,
+   "data": {
+    "label": "llm:qwen/qwen3.8-27b",
+    "duration_ms": 191.25
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  },
+  {
+   "event_id": "evt_1792077522142_aa5eb99f",
+   "kind": "run.end",
+   "span_id": null,
+   "parent_span_id": null,
+   "timestamp": 1792077522.1427324,
+   "t_offset_ms": 21333.85,
+   "data": {
+    "status": "completed"
+   },
+   "input_tokens": null,
+   "output_tokens": null,
+   "cached_tokens": null,
+   "model": null
+  }
+ ],
+ "final_answer": "The corpus does not contain a customer count for Razorpay.",
+ "tool_calls": 5,
+ "parse_errors": 0
+}
