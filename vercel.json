@@ -15,7 +15,11 @@
     }
   },
   "rewrites": [
-    { "source": "/dashboard/(.*)", "destination": { "service": "dashboard" } },
+    { "source": "/", "destination": { "service": "dashboard", "path": "/" } },
+    { "source": "/dashboard/(.*)", "destination": { "service": "dashboard", "path": "/$1" } },
     { "source": "/(.*)", "destination": { "service": "afrec-api" } }
+  ],
+  "redirects": [
+    { "source": "/dashboard", "destination": "/dashboard/" }
   ]
 }
