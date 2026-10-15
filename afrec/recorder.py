@@ -259,9 +259,24 @@ class Run:
 
 
 class Recorder:
+    """Entry point for recording agent runs.
+
+    Default store resolution, in order:
+      1. an explicit store passed by the caller (SqliteStore or HttpStore),
+      2. AFREC_API_URL set -> HttpStore streaming to that ingestion API,
+         with a local SqliteStore mirror at $AFREC_DB (outage-proof),
+      3. plain local SqliteStore at $AFREC_DB.
+    """
     def __init__(self, store: Optional[SqliteStore] = None):
         env_path = os.environ.get("AFREC_DB", "afrec.sqlite3")
-        self.store = store or SqliteStore(env_path)
+        if store is None:
+            api_url = os.environ.get("AFREC_API_URL")
+            if api_url:
+                from .http_store import HttpStore
+                store = HttpStore(api_url, mirror=SqliteStore(env_path))
+            else:
+                store = SqliteStore(env_path)
+        self.store = store
         self.crashed_runs: set = set()
         self.failed_writes = 0
 

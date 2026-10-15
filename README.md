@@ -123,3 +123,38 @@ stale-figure failure leaving findable evidence. 6/6 passing.
 ## Stack
 
 Python 3.11 SDK + SQLite (Postgres later) · FastAPI ingestion API (`api/main.py`, `uvicorn api.main:app`) · React + TypeScript dashboard (`dashboard/`, `npm run dev`) · pytest · Render + Vercel for deploy
+## Streaming real agents to the live API (Phase 8.1)
+
+`afrec.HttpStore` streams runs to an ingestion API as they happen — the
+drop-in way to record a real provider call (Gemini, OpenAI, ...) and watch
+it on the dashboard:
+
+```python
+from afrec import Recorder, HttpStore
+
+rec = Recorder(store=HttpStore("https://afrec-api.onrender.com"))
+# or just: export AFREC_API_URL=https://afrec-api.onrender.com
+#           then get_recorder() picks it up automatically
+
+with rec.run("my task") as run:
+    with run.llm_call("gemini-2.0-flash", messages=[...]) as span:
+        resp = client.models.generate_content(model="gemini-2.0-flash", contents="hi")
+        span.result(resp.text,
+                    input_tokens=resp.usage_metadata.prompt_token_count,
+                    output_tokens=resp.usage_metadata.candidates_token_count)
+
+rec.store.flush(timeout=30)
+```
+
+Design guarantees (tested in `tests/test_http_store.py`):
+
+1. **Instrumentation never breaks the agent.** Posts run on a background
+   thread; a dead API is counted and warned, never raised into your loop.
+2. **An outage never loses a trace.** Every event also writes to a local
+   SQLite mirror (`$AFREC_DB`), so the recording survives network failure.
+3. **Secrets stay in-process.** Data is redacted before it goes on the wire.
+4. **Retries are idempotent.** Client-side event IDs de-duplicate retries.
+
+Full runnable example: `python -m examples.gemini_agent` (needs
+`google-genai` and a `GEMINI_API_KEY`).
+
