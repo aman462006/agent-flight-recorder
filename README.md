@@ -81,7 +81,7 @@ Stable across seeds 7 and 99. Full JSON report: `bench/results/`
 
 The circularity above is exactly why `bench/real/` exists. A tool-using
 agent (search + calculator) runs 30 varied tasks against a REAL LLM
-(Groq `llama-3.3-70b-versatile` via REST — the same provider RevGuard
+(Groq `qwen/qwen3.8-27b` via REST — the same provider and model RevGuard
 runs in production — with Gemini supported as a fallback; key from the
 environment, never hardcoded), every trace is
 saved, a HUMAN labels each one success/failure via `python -m
@@ -90,9 +90,9 @@ bench.real.evaluate` scores the UNCHANGED investigator against those
 labels — precision, recall, every miss and false positive, by trace ID.
 Rules are not tuned to the labelled set.
 
-Current state, verbatim as of 2026-10-15: no traces have been collected
-(collection needs a `GROQ_API_KEY` in the environment; none is present
-yet) and no labels exist.
+Current state, verbatim as of 2026-10-15: all 30 traces collected
+(model `qwen/qwen3.8-27b` on Groq, temperature 0.7, 0 collection
+failures), no labels yet, so the honest scores are still:
 The real output of `python -m bench.real.evaluate` right now:
 
 ```
@@ -100,11 +100,61 @@ no labels.json — run  python -m bench.real.label  first.
 (labels are human-only in this pipeline; nothing auto-labels.)
 ```
 
-Traces: 0 collected. Model: `llama-3.3-70b-versatile` on Groq
+Traces: 30 collected. Model: `qwen/qwen3.8-27b` on Groq
 (configurable via `AFREC_REAL_MODEL`). Known weaknesses: none measured yet — this list
 will be filled from actual misses with trace IDs once labelled traces
 exist, and if recall is low, the number stays low here. The README will
 quote the real table, not a flattering one.
+
+## Why not Langfuse / LangSmith / Phoenix?
+
+All three are good tools. If you need a production observability platform,
+use one of them. This project exists for a narrower job, and there are
+three things it does that they don't, as of writing:
+
+- **Diff-first baseline comparison.** The replay mode re-executes a
+  recorded run and diffs it against a stored baseline event-by-event.
+  "What changed between the version of the agent that worked and the one
+  that doesn't" is a file-level `diff` away, not a dashboard exercise.
+- **Evidence-linked rule diagnosis.** The investigator rules don't just
+  flag a run as bad, they cite the exact span/event that proves the
+  finding (a tool result that never got used, a value that contradicts
+  an earlier one). A score tells you a run failed; the cited evidence
+  tells you where to look.
+- **Nothing to run.** One pip install, one SQLite file, zero servers.
+  Langfuse self-hosting is a Docker + Postgres stack; LangSmith is
+  hosted-only; Phoenix is lighter but still a service with a UI to keep
+  alive. This is a file and a stdlib HTTP API.
+
+What they do better, plainly:
+
+- **Scale and durability.** They are built on real databases for
+  millions of traces, teams, and access control. This is single-process
+  SQLite.
+- **Analytics and collaboration.** Dashboards, trends, prompt
+  management, experiment tracking, alerting, SSO. None of that is here
+  and most of it isn't planned.
+- **Ecosystem.** OpenInference/integration coverage for every framework,
+  hosted ingestion at volume. Here you install the SDK and call
+  `recorder.run(...)`.
+
+Use this to debug your agent. Use them to run observability for an
+organization.
+
+## Limitations
+
+- **SQLite on ephemeral hosting loses data on restart.** On serverless
+  platforms (Vercel) the store lives in `/tmp` and is wiped between cold
+  starts. Fine for a demo, wrong for retention; point `AFREC_API_DB` at
+  a persistent disk, or run the API on a long-lived host, if you want
+  the data to survive.
+- **The investigator is rule-based, not learned.** The rules encode
+  known failure shapes (stale data, unused results, contradicting
+  values). They say nothing about failure shapes nobody wrote down, and
+  there is no ML here to find novel ones. That is exactly what the
+  real-agent evaluation above is for: measuring what the rules miss.
+- **Single-process, single-user.** No auth, no multi-tenant isolation,
+  no ingestion sharding. One process, one SQLite file.
 
 ## The SDK (works today)
 
@@ -162,6 +212,12 @@ cd dashboard && npx vitest run  # trace-reconstruction logic (10 tests at last r
 Phase 1 acceptance: complete ordered traces, parent-child reconstruction,
 crash-time partial runs, secret redaction, honest cost accounting, and the
 stale-figure failure leaving findable evidence. All enforced by the suite above.
+
+## Dashboard
+
+![Dashboard showing a real recorded trace](docs/dashboard.png)
+*(screenshot pending, see docs/TODO.md; it will be a real capture of the
+live dashboard, not a mockup)*
 
 ## Stack
 

@@ -32,7 +32,7 @@ def main() -> None:
     ap.add_argument("--temperature", type=float, default=None)
     args = ap.parse_args()
 
-    from bench.real.agent import GeminiLLM, run_task
+    from bench.real.agent import make_llm, run_task
 
     os.makedirs(TRACES_DIR, exist_ok=True)
     tasks = json.load(open(os.path.join(HERE, "tasks.json")))["tasks"]
@@ -41,8 +41,9 @@ def main() -> None:
     else:
         tasks = [t for t in tasks if int(t["id"][1:]) >= args.start]
 
-    llm = GeminiLLM(model=args.model,
-                    temperature=args.temperature if args.temperature is not None else 0.7)
+    llm = make_llm(temperature=args.temperature if args.temperature is not None else 0.7)
+    if args.model:
+        llm.model = args.model
     print(f"collecting {len(tasks)} task(s) | model={llm.model} temp={llm.temperature}")
 
     done, skipped, failed = 0, 0, 0

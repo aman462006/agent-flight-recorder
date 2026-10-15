@@ -27,6 +27,20 @@ import time
 import urllib.request
 from typing import Any, Dict, List, Optional
 
+# Load platform-managed secrets (.agents/.env) so the agent works in any
+# shell, not only where the platform auto-sources them. Keys are never
+# hardcoded; this only surfaces what was already stored as a secret.
+for _envpath in ("/app/.agents/.env", ".agents/.env"):
+    if os.path.exists(_envpath):
+        for _line in open(_envpath):
+            _line = _line.strip()
+            if _line.startswith("export "):
+                _line = _line[7:]
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                _k, _v = _k.strip(), _v.strip()
+                os.environ.setdefault(_k, _v)
+
 from afrec import Recorder
 from afrec.models import new_id
 from afrec.recorder import SqliteStore
@@ -95,7 +109,7 @@ def calculator(expression: str) -> float:
 # The LLM: Gemini REST. Key from env, never hardcoded, never logged.
 # ---------------------------------------------------------------------------
 
-DEFAULT_GROQ_MODEL = os.environ.get("AFREC_REAL_MODEL", "llama-3.3-70b-versatile")
+DEFAULT_GROQ_MODEL = os.environ.get("AFREC_REAL_MODEL", "qwen/qwen3.8-27b")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -103,7 +117,8 @@ API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
 class GroqLLM:
     """Groq via its OpenAI-compatible REST endpoint (no SDK dependency).
-    The provider RevGuard uses in production; keys from GROQ_API_KEY only."""
+    The provider and model RevGuard uses in production (qwen3.8-27b);
+    keys from GROQ_API_KEY only."""
 
     def __init__(self, model: str = DEFAULT_GROQ_MODEL, temperature: float = 0.7,
                  api_key: Optional[str] = None):
@@ -123,23 +138,27 @@ class GroqLLM:
         req = urllib.request.Request(
             GROQ_URL, data=json.dumps(payload).encode(),
             headers={"Content-Type": "application/json",
-                     "Authorization": f"Bearer {self.api_key}"},
+                     "Authorization": f"Bearer {self.api_key}",
+                     # Groq fronts the API with Cloudflare, which rejects
+                     # the default Python-urllib UA (HTTP 403, code 1010)
+                     "User-Agent": "afrec-bench/1.0"},
             method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=60) as r:
-                body = json.load(r)
-        except urllib.error.HTTPError as e:
-            detail = ""
+        # free-tier rate limits are real; back off and retry instead of
+        # losing the trace
+        last_err = None
+        for attempt, delay in enumerate((20, 45, 90), 1):
             try:
-                detail = e.read().decode()[:200]
-            except Exception:
-                pass
-            if e.code == 401:
-                raise RuntimeError(
-                    "The provider rejected the credentials (401). The "
-                    "environment needs a working key for the selected "
-                    "provider — keys are read from the environment only.") from e
-            raise
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    body = json.load(r)
+                break
+            except urllib.error.HTTPError as e:
+                last_err = e
+                if e.code == 429 and attempt < 3:
+                    time.sleep(delay)
+                    continue
+                raise
+        else:
+            raise last_err
         usage = body.get("usage", {})
         text = body.get("choices", [{}])[0].get("message", {}).get("content", "") or ""
         return {"text": text,
@@ -271,8 +290,12 @@ def run_task(task: str, llm: GeminiLLM, trace_dir: Optional[str] = None,
 
     with rec.run(task, tags=tags) as run:
         for step in range(MAX_STEPS):
-            with run.llm_call(llm.model, [{"role": "user", "content": conversation[-1]}]) as span:
-                resp = llm.complete(conversation[-1])
+            # send the FULL conversation, not just the last message: the
+            # model must remember the task and its own prior tool calls,
+            # otherwise every post-tool step answers blind.
+            prompt = "\n\n".join(conversation)
+            with run.llm_call(llm.model, [{"role": "user", "content": prompt}]) as span:
+                resp = llm.complete(prompt)
                 span.result(resp["text"], input_tokens=resp["input_tokens"],
                            output_tokens=resp["output_tokens"], model=resp["model"])
 

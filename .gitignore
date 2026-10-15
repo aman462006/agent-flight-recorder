@@ -5,3 +5,5 @@ __pycache__/
 .env
 node_modules/
 dist/
+bench/real/traces/
+bench/real/labels.json

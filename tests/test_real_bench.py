@@ -209,7 +209,7 @@ def test_make_llm_prefers_groq_then_gemini(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test-gemini")
     llm = A.make_llm()
     assert isinstance(llm, A.GroqLLM)
-    assert llm.model == "llama-3.3-70b-versatile"
+    assert llm.model == "qwen/qwen3.8-27b"
     # gemini fallback when only gemini is present
     monkeypatch.delenv("GROQ_API_KEY")
     assert isinstance(A.make_llm(), A.GeminiLLM)
@@ -220,7 +220,7 @@ def test_groqllm_parses_response_shape():
     import urllib.request, urllib.error, io
     fake_body = {"choices": [{"message": {"content": '{"answer": "ok"}'}}],
                  "usage": {"prompt_tokens": 12, "completion_tokens": 7},
-                 "model": "llama-3.3-70b-versatile"}
+                 "model": "qwen/qwen3.8-27b"}
     class FakeResp(io.BytesIO):
         def __enter__(self): return self
         def __exit__(self, *a): return False
