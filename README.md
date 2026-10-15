@@ -1,7 +1,12 @@
 # Agent Flight Recorder — AI Agent Observability & Debugging
 
-A Python SDK and dashboard for recording, replaying and debugging multi-step
-AI agent executions: every LLM call, tool invocation, result, error and token
+Agent Flight Recorder records everything an AI agent does while it runs: every
+model call, tool use, result and error, with token counts and cost. Developers
+can replay a recorded run, diff it against another, and see the exact step
+where it went wrong.
+
+Under the hood it is a Python SDK and dashboard for recording, replaying and
+debugging multi-step AI agent executions: every LLM call, tool invocation, result, error and token
 count, captured as an ordered, parent-child trace you can inspect, cost and diff.
 
 **Why it exists:** an agent that returns a polished answer containing a wrong
@@ -15,15 +20,15 @@ it went wrong, not just *that* it did.
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Recorder SDK: run/span/event model, SQLite store, redaction | ✅ shipped |
-| 2 | Ingestion API (FastAPI): validation, idempotency, redaction | ✅ shipped, 14/14 tests |
-| 3 | Dashboard (React + TS): run list, span timeline, event inspector | ✅ shipped, 9 logic tests + tsc strict + prod build |
-| 4 | Cost & latency profiler (pricing config, cached tokens) | ✅ shipped, 20/20 tests + /runs/{id}/profile |
-| 5 | Replay & diff: deterministic replay + earliest-divergence diff | ✅ shipped, 28/28 tests |
-| 6 | Failure investigator: evidence-linked diagnosis, hypothesis labelled | ✅ shipped, 12 tests, GET /runs/{id}/investigate |
-| 7 | Benchmark: 103 scripted failures, measured precision/recall | ✅ shipped, 12 tests, `python -m bench.run_benchmark` |
-| 8 | Deploy: render.yaml + vercel.json + DEPLOY.md + seed script | ✅ configs & docs shipped (see DEPLOY.md); live deploy pending accounts |
+| 2 | Ingestion API (FastAPI): validation, idempotency, redaction | ✅ shipped |
+| 3 | Dashboard (React + TS): run list, span timeline, event inspector | ✅ shipped |
+| 4 | Cost & latency profiler (pricing config, cached tokens) | ✅ shipped, GET /runs/{id}/profile |
+| 5 | Replay & diff: deterministic replay + earliest-divergence diff | ✅ shipped |
+| 6 | Failure investigator: evidence-linked diagnosis, hypothesis labelled | ✅ shipped, GET /runs/{id}/investigate |
+| 7 | Benchmark: 103 scripted failures, measured precision/recall | ✅ shipped, `python -m bench.run_benchmark` |
+| 8 | Deploy: single Vercel project (dashboard at root + ingestion API, see vercel.json) | ✅ live; optional standalone API on Render (see DEPLOY.md) |
 
-Full suite: 52/52 pytest, 9/9 vitest.
+Full suite, run just now on this repo: 57/57 pytest, 10/10 vitest.
 
 ## Failure investigator (the headline)
 
@@ -57,7 +62,7 @@ not enough — that is why replay and diff exist.
 | Failures fully detected | 63/63 |
 | Clean runs reported clean | 40/40 (0 false-positive findings) |
 | Per-rule precision | 1.00 (all 8 rules) |
-| Latency per investigation | 0.019 ms mean, 0.066 ms max |
+| Latency per investigation | 0.011 ms mean, 0.047 ms max (observed on this machine) |
 
 Stable across seeds 7 and 99. Full JSON report: `bench/results/`
 (regenerate with the command above). Thresholds pinned in
@@ -112,13 +117,13 @@ python -m demo_agent.agent
 ## Tests
 
 ```bash
-python3 -m pytest tests/ -q        # SDK + API (14 tests)
-cd dashboard && npx vitest run  # trace-reconstruction logic (7 tests)
+python3 -m pytest tests/ -q        # full backend suite (57 tests at last run)
+cd dashboard && npx vitest run  # trace-reconstruction logic (10 tests at last run)
 ```
 
 Phase 1 acceptance: complete ordered traces, parent-child reconstruction,
 crash-time partial runs, secret redaction, honest cost accounting, and the
-stale-figure failure leaving findable evidence. 6/6 passing.
+stale-figure failure leaving findable evidence. All enforced by the suite above.
 
 ## Stack
 

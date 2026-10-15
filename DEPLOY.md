@@ -1,14 +1,22 @@
 # Deploying the Agent Flight Recorder
 
-Two services, both free tiers. The API on Render, the dashboard on Vercel.
+Two ways to deploy, both free tiers:
+
+1. **One Vercel project, both services** (what `vercel.json` configures):
+   the dashboard at the domain root and the ingestion API on every other
+   path, same origin. No `VITE_API_URL` needed — the dashboard fetches
+   `/runs`, `/health`, ... relative to its own origin.
+2. **Standalone API on Render** (`render.yaml`): useful when streaming
+   runs from real agents (`afrec.HttpStore`) to a long-lived API URL.
 
 Honest limits, stated first:
 
-- Render free tier has no persistent disk: the API's SQLite file resets on
-  every restart/redeploy. Fine for a demo; swap in a disk or Postgres
-  before anything real.
-- The dashboard's API URL is baked in at BUILD time (Vite env var), so set
-  `VITE_API_URL` in Vercel before the first build.
+- Serverless SQLite lives in `/tmp` (Vercel) or resets on restart/redeploy
+  (Render free tier): recorded runs disappear when the instance recycles.
+  Fine for a demo; swap in Postgres before anything real.
+- `VITE_API_URL` is only needed if you want the dashboard to talk to a
+  DIFFERENT API (e.g. the Render one); leave it unset for the single
+  Vercel project.
 
 ## 1. API on Render
 
@@ -18,13 +26,15 @@ Honest limits, stated first:
 3. Note the deployed URL, e.g. `https://afrec-api.onrender.com`.
 4. Verify: `curl https://<api-url>/health` returns `{"ok": true, ...}`.
 
-## 2. Dashboard on Vercel
+## 2. Dashboard + API on Vercel (single project)
 
-1. On vercel.com: Add New > Project, import the same repo. `vercel.json`
-   sets the build (dashboard + npm run build, output dashboard/dist).
-2. In Project Settings > Environment Variables, add:
-   - `VITE_API_URL` = `https://<api-url>` (the Render URL, no trailing slash)
-3. Deploy. Open the dashboard, pick a run, hit Investigate.
+1. On vercel.com: Add New > Project, import this repo, leave the root
+   directory at the repo root. `vercel.json` (services mode) builds both:
+   the dashboard (Vite) and the ingestion API (FastAPI, entrypoint
+   `api/main.py`).
+2. No environment variables needed: the dashboard is served at the domain
+   root and calls the same-origin API (`/health`, `/runs`, ...).
+3. Deploy, open the dashboard, pick a run, hit Investigate.
 
 ## 3. Seeding a demo run
 
