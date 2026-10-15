@@ -35,7 +35,11 @@ from pydantic import BaseModel, Field
 
 from afrec.recorder import SqliteStore, redact
 
-DB_PATH = os.environ.get("AFREC_API_DB", "afrec_api.sqlite3")
+# Serverless filesystems are read-only except /tmp, and each instance is
+# ephemeral — the SQLite file must live in /tmp there (swap to Postgres
+# for persistence across instances).
+_DEFAULT_DB = "/tmp/afrec_api.sqlite3" if os.environ.get("VERCEL") else "afrec_api.sqlite3"
+DB_PATH = os.environ.get("AFREC_API_DB", _DEFAULT_DB)
 
 app = FastAPI(title="Agent Flight Recorder — Ingestion API", version="0.2.0")
 
