@@ -29,6 +29,9 @@ DEFAULT_PRICING: Dict[str, PricingConfig] = {
     "gpt-4o-mini": PricingConfig(input_per_m=0.15, output_per_m=0.60, cached_input_per_m=0.075),
     "claude-sonnet-4": PricingConfig(input_per_m=3.00, output_per_m=15.00),
     "llama-3.1-8b-instruct": PricingConfig(input_per_m=0.05, output_per_m=0.08),
+    # Groq's published self-serve rate for Llama 3.3 70B Versatile as of its
+    # 2026-08-26 enterprise transition (last public rate, groq.com pricing page).
+    "llama-3.3-70b-versatile": PricingConfig(input_per_m=0.59, output_per_m=0.79),
 }
 
 
