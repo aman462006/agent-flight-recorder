@@ -62,9 +62,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-store = SqliteStore(DB_PATH)
-
-
 # ---------------------------------------------------------------------------
 # Request models — strict on structure, lenient on content.
 # ---------------------------------------------------------------------------
