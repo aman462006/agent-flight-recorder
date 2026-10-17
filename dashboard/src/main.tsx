@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { listRuns, getRun, investigateRun, seedExamples, ApiRun, ApiEvent, ApiInvestigation } from './api';
+import { listRuns, getRun, investigateRun, seedExamples, getProfile, ApiRun, ApiEvent, ApiInvestigation, ApiProfile } from './api';
 import { sortFindings, countBySeverity } from './trace';
-import { buildSpanTree, summarizeCost, runDuration, spanTokens, SpanNode } from './trace';
+import { buildSpanTree, summarizeCost, runDuration, spanTokens, SpanNode, decisionSequence, firstDivergence, groupSpans } from './trace';
 
 /* ---------- design tokens (light theme) ---------- */
 
@@ -165,7 +165,7 @@ function AboutPage() {
         {step(2, 'Record and stream',
           'Runs are recorded locally and streamed to the ingestion API in the background. Recording can never crash your agent: a broken store degrades to a no-op, and an outage falls back to a local mirror that catches up later.')}
         {step(3, 'Investigate',
-          'The investigator runs ten deterministic rules over each run: crashes, errors, unclosed spans, tool calls without results, conflicting records, stale-value consumption, empty-search conclusions, token gaps, repeated decisions, and baseline divergence against a healthy run.')}
+          'The investigator runs twelve deterministic rules over each run: crashes, runs that never ended, errors, unclosed spans, tool calls without results, conflicting records, stale-value consumption, empty-search conclusions, token capture gaps, repeated decisions, and baseline comparison against a healthy run (identical or diverging).')}
       </div>
 
       <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.4, margin: '40px 0 6px' }}>What you can see</h2>
@@ -183,6 +183,24 @@ function AboutPage() {
         ))}
       </div>
 
+
+      <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.4, margin: '40px 0 6px' }}>Security, honestly</h2>
+      <p style={{ fontSize: 14, color: T.soft, margin: '0 0 16px' }}>
+        Straight answers, because a security reviewer will ask.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+        {[
+          ['Is the hosted API authenticated?', 'No. This deployment accepts runs from anyone and shows all runs to anyone. "Your runs" means runs streamed by real agents, as opposed to the seeded demo runs — it is not a per-user partition.'],
+          ['Should I point my agent at it?', 'For demos, evals and toy projects, yes. For anything with real customer data, run the ingestion API yourself: it is one repo, one DATABASE_URL, and your data never leaves infrastructure you control.'],
+          ['Are secrets redacted?', 'Yes, twice. The SDK redacts before sending (API keys, bearer tokens, password-like fields), and the API redacts again on ingest, so a client that forgot still cannot leak through. Traces store what your agent actually did, minus known secret shapes.'],
+          ['What about prompts and task text?', 'They are stored as-is, because a flight recorder that drops the prompt cannot explain the failure. Assume anything you stream is visible to whoever has the API URL, and self-host when that is not acceptable.'],
+        ].map(([title, body]) => (
+          <div key={title} style={{ ...card, padding: 16 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 5 }}>{title}</div>
+            <div style={{ fontSize: 12.5, color: T.soft, lineHeight: 1.6 }}>{body}</div>
+          </div>
+        ))}
+      </div>
 
       <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.4, margin: '40px 0 6px' }}>Use it with your own agent</h2>
       <p style={{ fontSize: 14, color: T.soft, margin: '0 0 16px' }}>
@@ -244,16 +262,38 @@ POST /events  {"run_id": "run_1", "kind": "llm.request",
   );
 }
 
-/* ---------- span timeline ---------- */
+/* ---------- span timeline (grouped repeats, duration bars, cost chips) ---------- */
 
-function SpanRow({ node, depth, onSelect, selectedId }: {
+function fmtCost(v: number | null | undefined): string {
+  if (v == null) return 'unknown';
+  if (v === 0) return '$0';
+  if (v < 0.01) return `$${v.toFixed(4)}`;
+  if (v < 1) return `$${v.toFixed(3)}`;
+  return `$${v.toFixed(2)}`;
+}
+
+/** Duration meter: proportional fill so slow steps stand out at a glance. */
+function DurationBar({ node, barMax }: { node: SpanNode; barMax: number }) {
+  if (node.duration_ms == null) return null;
+  const pct = Math.min(100, (node.duration_ms / barMax) * 100);
+  const color = KIND_COLORS[node.kind] ?? KIND_COLORS.span;
+  return (
+    <div style={{ width: 72, height: 5, background: '#edf0f6', borderRadius: 999, flexShrink: 0, overflow: 'hidden' }}>
+      <div style={{ width: `${Math.max(6, pct)}%`, height: '100%', background: color, borderRadius: 999 }} />
+    </div>
+  );
+}
+
+function SpanRow({ node, depth, onSelect, selectedId, barMax, costUsd }: {
   node: SpanNode; depth: number; onSelect: (n: SpanNode) => void; selectedId: string | null;
+  barMax: number; costUsd: number | null | undefined;
 }) {
   const color = KIND_COLORS[node.kind] ?? KIND_COLORS.span;
   return (
     <div>
       <div
         onClick={() => onSelect(node)}
+        className="afrec-spanrow"
         style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '7px 10px', marginLeft: depth * 18, cursor: 'pointer',
@@ -262,17 +302,87 @@ function SpanRow({ node, depth, onSelect, selectedId }: {
         }}
       >
         <span style={{ width: 8, height: 8, borderRadius: 4, background: color, flexShrink: 0 }} />
-        <span style={{ flex: 1, ...mono, fontSize: 12.5, color: T.text }}>{node.label}</span>
+        <span style={{ flex: 1, ...mono, fontSize: 12.5, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.label}</span>
         {spanTokens(node.events) && (
-          <span style={{ color: T.blue, fontSize: 11.5, fontWeight: 500, background: T.blueSoft, borderRadius: 999, padding: '2px 8px' }}>
+          <span style={{ color: T.blue, fontSize: 11.5, fontWeight: 500, background: T.blueSoft, borderRadius: 999, padding: '2px 8px', flexShrink: 0 }}>
             {spanTokens(node.events)!.input.toLocaleString()} in / {spanTokens(node.events)!.output.toLocaleString()} out
           </span>
         )}
+        {costUsd !== undefined && (
+          <span style={{ color: T.green, fontSize: 11, fontWeight: 600, background: T.greenSoft, borderRadius: 999, padding: '2px 8px', flexShrink: 0 }}>
+            {fmtCost(costUsd)}
+          </span>
+        )}
+        <DurationBar node={node} barMax={barMax} />
         {node.duration_ms != null
-          ? <span style={{ color: T.faint, fontSize: 11.5 }}>{node.duration_ms.toFixed(1)} ms</span>
-          : <span style={{ color: T.red, fontSize: 11.5, fontWeight: 600 }}>open / crashed</span>}
+          ? <span style={{ color: T.faint, fontSize: 11.5, width: 64, textAlign: 'right', flexShrink: 0 }}>{node.duration_ms >= 1000 ? `${(node.duration_ms / 1000).toFixed(2)} s` : `${node.duration_ms.toFixed(0)} ms`}</span>
+          : <span style={{ color: T.red, fontSize: 11.5, fontWeight: 600, flexShrink: 0 }}>open / crashed</span>}
+        <span className="afrec-hint" style={{ color: T.accent, fontSize: 10.5, fontWeight: 600, flexShrink: 0 }}>inspect ▸</span>
       </div>
-      {node.children.map((c) => <SpanRow key={c.span_id} node={c} depth={depth + 1} onSelect={onSelect} selectedId={selectedId} />)}
+      {node.children.map((c) => (
+        <SpanRow key={c.span_id} node={c} depth={depth + 1} onSelect={onSelect} selectedId={selectedId} barMax={barMax}
+          costUsd={c.span_id === node.span_id ? costUsd : undefined} />
+      ))}
+    </div>
+  );
+}
+
+/** A run of consecutive identical decisions renders as one row with a ×N chip. */
+function SpanGroupRow({ group, depth, onSelect, selectedId, barMax, spanCosts }: {
+  group: ReturnType<typeof groupSpans>[number]; depth: number;
+  onSelect: (n: SpanNode) => void; selectedId: string | null;
+  barMax: number; spanCosts: Map<string, number | null>;
+}) {
+  const [open, setOpen] = useState(false);
+  const n = group.nodes.length;
+  const totalTokens = group.nodes.reduce((acc, s) => {
+    const tk = spanTokens(s.events);
+    return tk ? { input: acc.input + tk.input, output: acc.output + tk.output } : acc;
+  }, { input: 0, output: 0 });
+  const totalDur = group.nodes.reduce((acc, s) => acc + (s.duration_ms ?? 0), 0);
+  const totalCost = group.nodes.reduce((acc, s) => acc + (spanCosts.get(s.span_id) ?? 0), 0);
+  const anyCost = group.nodes.some((s) => spanCosts.has(s.span_id));
+  const head = group.nodes[0];
+  const color = KIND_COLORS[head.kind] ?? KIND_COLORS.span;
+
+  if (n === 1) {
+    return <SpanRow node={head} depth={depth} onSelect={onSelect} selectedId={selectedId} barMax={barMax}
+      costUsd={spanCosts.has(head.span_id) ? spanCosts.get(head.span_id) : undefined} />;
+  }
+  return (
+    <div>
+      <div
+        className="afrec-spanrow"
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '7px 10px', marginLeft: depth * 18, cursor: 'pointer', borderRadius: 8,
+          background: open ? '#f6f8fe' : 'transparent',
+        }}
+      >
+        <span style={{ width: 8, height: 8, borderRadius: 4, background: color, flexShrink: 0 }} />
+        <span style={{ ...mono, fontSize: 12.5, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{head.label}</span>
+        <span style={{ background: T.amberSoft, color: T.amber, fontSize: 10.5, fontWeight: 700, borderRadius: 999, padding: '2px 8px', flexShrink: 0 }}>
+          ×{n} repeated
+        </span>
+        <span style={{ flex: 1 }} />
+        {(totalTokens.input > 0 || totalTokens.output > 0) && (
+          <span style={{ color: T.blue, fontSize: 11.5, fontWeight: 500, background: T.blueSoft, borderRadius: 999, padding: '2px 8px', flexShrink: 0 }}>
+            {totalTokens.input.toLocaleString()} in / {totalTokens.output.toLocaleString()} out
+          </span>
+        )}
+        {anyCost && (
+          <span style={{ color: T.green, fontSize: 11, fontWeight: 600, background: T.greenSoft, borderRadius: 999, padding: '2px 8px', flexShrink: 0 }}>
+            {fmtCost(totalCost)}
+          </span>
+        )}
+        <span style={{ color: T.faint, fontSize: 11.5, width: 64, textAlign: 'right', flexShrink: 0 }}>{(totalDur / 1000).toFixed(2)} s</span>
+        <span className="afrec-hint" style={{ color: T.accent, fontSize: 10.5, fontWeight: 600, flexShrink: 0 }}>{open ? 'collapse ▾' : 'expand ▸'}</span>
+      </div>
+      {open && group.nodes.map((s) => (
+        <SpanRow key={s.span_id} node={s} depth={depth + 1} onSelect={onSelect} selectedId={selectedId} barMax={barMax}
+          costUsd={spanCosts.has(s.span_id) ? spanCosts.get(s.span_id) : undefined} />
+      ))}
     </div>
   );
 }
@@ -327,17 +437,27 @@ const SEVERITY_SOFT: Record<string, string> = {
   info: T.blueSoft,
 };
 
-function InvestigationPanel({ runId, otherRuns }: { runId: string; otherRuns: ApiRun[] }) {
+function InvestigationPanel({ runId, otherRuns, runTags, onCompare }: {
+  runId: string; otherRuns: ApiRun[]; runTags: Record<string, unknown> | undefined;
+  onCompare: (baselineRunId: string) => void;
+}) {
   const [inv, setInv] = useState<ApiInvestigation | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [baseline, setBaseline] = useState<string>('');
 
-  const run = async () => {
+  // The divergence demo always investigates against its healthy pair — the
+  // headline finding should never sit behind a manual dropdown.
+  const naturalBaseline = otherRuns.find(
+    (r) => (r.tags as Record<string, unknown> | undefined)?.shape === 'baseline-good');
+  const autoBaseline = runTags?.shape === 'baseline-bad' && naturalBaseline
+    ? naturalBaseline.run_id : '';
+
+  const run = async (b: string) => {
     setBusy(true);
     setError(null);
     try {
-      const result = await investigateRun(runId, baseline || undefined);
+      const result = await investigateRun(runId, b || undefined);
       setInv(result);
     } catch (e) {
       setError(String(e));
@@ -346,16 +466,23 @@ function InvestigationPanel({ runId, otherRuns }: { runId: string; otherRuns: Ap
     }
   };
 
+  useEffect(() => {
+    setInv(null);
+    setBaseline(autoBaseline);
+    run(autoBaseline);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runId]);
+
   return (
     <div>
       <div style={sectionLabel}>Investigation</div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        <button onClick={run} disabled={busy} style={{ ...btn, opacity: busy ? 0.6 : 1 }}>
+        <button onClick={() => run(baseline)} disabled={busy} style={{ ...btn, opacity: busy ? 0.6 : 1 }}>
           {busy ? 'Investigating…' : 'Investigate this run'}
         </button>
         <select
           value={baseline}
-          onChange={(e) => setBaseline(e.target.value)}
+          onChange={(e) => { setBaseline(e.target.value); run(e.target.value); }}
           style={{ background: '#fff', color: T.text, border: `1px solid ${T.border}`, borderRadius: 8, padding: '7px 10px', fontSize: 12, maxWidth: 220 }}
         >
           <option value="">no baseline (single-run rules)</option>
@@ -363,7 +490,13 @@ function InvestigationPanel({ runId, otherRuns }: { runId: string; otherRuns: Ap
             <option key={r.run_id} value={r.run_id}>baseline: {r.task.slice(0, 40)}</option>
           ))}
         </select>
+        {baseline && (
+          <button onClick={() => onCompare(baseline)} style={btnGhost}>
+            ⇄ Compare side by side
+          </button>
+        )}
       </div>
+      {busy && !inv && <div style={{ color: T.soft, fontSize: 12.5 }}>Investigating…</div>}
       {error && <div style={{ color: T.red, fontSize: 12, marginBottom: 8 }}>{error}</div>}
       {inv && inv.clean && (
         <div style={{ background: T.greenSoft, color: T.green, borderRadius: 8, padding: 12, fontSize: 13, lineHeight: 1.5 }}>
@@ -416,16 +549,135 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: 'ac
   );
 }
 
-function RunDetail({ runId, otherRuns }: { runId: string; otherRuns: ApiRun[] }) {
-  const [data, setData] = useState<{ run: ApiRun; events: ApiEvent[] } | null>(null);
+/* ---------- side-by-side baseline comparison ---------- */
+
+const DECISION_ICONS: Record<string, string> = {
+  tool_call: '🔧', llm_call: '✳', llm_payload: '↩', tool_payload: '↩',
+};
+
+function CompareCell({ row, missing }: { row: ReturnType<typeof decisionSequence>[number] | undefined; missing?: boolean }) {
+  if (!row || missing) {
+    return <div style={{ ...mono, fontSize: 11.5, color: T.faint, padding: '6px 8px' }}>— run ended here</div>;
+  }
+  return (
+    <div style={{ padding: '6px 8px' }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span style={{ fontSize: 11 }}>{DECISION_ICONS[row.type] ?? '·'}</span>
+        <span style={{ ...mono, fontSize: 12, fontWeight: 600, color: T.text }}>{row.label}</span>
+      </div>
+      {row.detail && (
+        <div style={{ ...mono, fontSize: 10.5, color: T.soft, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {row.detail}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompareView({ baselineId, runId, onClose }: { baselineId: string; runId: string; onClose: () => void }) {
+  const [pair, setPair] = useState<{ a: { run: ApiRun; events: ApiEvent[] }; b: { run: ApiRun; events: ApiEvent[] } } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<SpanNode | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    Promise.all([getRun(baselineId), getRun(runId)])
+      .then(([a, b]) => { if (!cancelled) setPair({ a, b }); })
+      .catch((e) => { if (!cancelled) setError(String(e)); });
+    return () => { cancelled = true; };
+  }, [baselineId, runId]);
+
+  if (error) return <div style={{ padding: 12, color: T.red, ...card, marginBottom: 12 }}>Compare failed: {error}</div>;
+  if (!pair) return <div style={{ padding: 12, color: T.soft, ...card, marginBottom: 12 }}>Loading comparison…</div>;
+
+  const seqA = decisionSequence(pair.a.events);
+  const seqB = decisionSequence(pair.b.events);
+  const div = firstDivergence(seqA, seqB);
+  const n = Math.max(seqA.length, seqB.length);
+
+  return (
+    <div style={{ ...card, padding: 14, marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <div>
+          <div style={sectionLabel}>Side-by-side comparison</div>
+          <div style={{ fontSize: 12, color: T.soft }}>
+            <span style={{ color: T.green, fontWeight: 600 }}>baseline:</span> {pair.a.run.task.slice(0, 48)}
+            {' vs '}
+            <span style={{ color: T.accent, fontWeight: 600 }}>this run:</span> {pair.b.run.task.slice(0, 48)}
+          </div>
+        </div>
+        <button onClick={onClose} style={{ ...btnGhost, padding: '4px 10px', fontSize: 11 }}>✕ close</button>
+      </div>
+
+      {div == null ? (
+        <div style={{ background: T.greenSoft, color: T.green, borderRadius: 8, padding: 10, fontSize: 12.5 }}>
+          The two runs made identical decisions — same tools, same arguments, same models. No divergence to show.
+        </div>
+      ) : (
+        <div style={{ background: T.redSoft, color: T.red, borderRadius: 8, padding: 10, fontSize: 12.5, marginBottom: 10, lineHeight: 1.5 }}>
+          <b>First divergence at decision #{div + 1}.</b> Everything before it is identical; everything after it is fallout, not cause.
+        </div>
+      )}
+
+      <div style={{ border: `1px solid ${T.border}`, borderRadius: 10, overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 1fr', background: '#f6f8fc', borderBottom: `1px solid ${T.border}` }}>
+          <div style={{ padding: '6px 8px', fontSize: 10.5, fontWeight: 700, color: T.faint }}>#</div>
+          <div style={{ padding: '6px 8px', fontSize: 10.5, fontWeight: 700, color: T.faint, borderLeft: `1px solid ${T.border}` }}>BASELINE</div>
+          <div style={{ padding: '6px 8px', fontSize: 10.5, fontWeight: 700, color: T.faint, borderLeft: `1px solid ${T.border}` }}>THIS RUN</div>
+        </div>
+        {Array.from({ length: n }, (_, i) => {
+          const a = seqA[i];
+          const b = seqB[i];
+          const same = a?.fingerprint === b?.fingerprint;
+          const isDiv = div != null && i === div;
+          const after = div != null && i > div && !same;
+          const bg = isDiv ? T.redSoft : after ? '#fdf7f0' : 'transparent';
+          const border = isDiv ? `2px solid ${T.red}` : after ? `1px solid ${T.amber}` : `1px solid transparent`;
+          return (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 1fr', background: bg, borderTop: border }}>
+              <div style={{ padding: '6px 8px', ...mono, fontSize: 11, color: same ? T.faint : isDiv ? T.red : T.amber, fontWeight: isDiv ? 700 : 500 }}>
+                {isDiv ? '▶' : ''}{i + 1}
+              </div>
+              <div style={{ borderLeft: `1px solid ${T.border}` }}><CompareCell row={a} missing={!a} /></div>
+              <div style={{ borderLeft: `1px solid ${T.border}` }}><CompareCell row={b} missing={!b} /></div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ marginTop: 8, fontSize: 11, color: T.faint, lineHeight: 1.5 }}>
+        Rows are the same decision fingerprint the server's diff uses (tool calls by name and arguments, model calls, payloads).
+        <span style={{ background: T.redSoft, color: T.red, borderRadius: 4, padding: '0 4px' }}> red = where they parted ways</span>,
+        <span style={{ background: '#fdf7f0', color: T.amber, borderRadius: 4, padding: '0 4px' }}> amber = later differences</span>.
+      </div>
+    </div>
+  );
+}
+
+function maxSpanDuration(nodes: SpanNode[]): number {
+  let mx = 0;
+  const walk = (n: SpanNode) => {
+    if (n.duration_ms != null && n.duration_ms > mx) mx = n.duration_ms;
+    n.children.forEach(walk);
+  };
+  nodes.forEach(walk);
+  return mx;
+}
+
+function RunDetail({ runId, otherRuns }: { runId: string; otherRuns: ApiRun[] }) {
+  const [data, setData] = useState<{ run: ApiRun; events: ApiEvent[] } | null>(null);
+  const [profile, setProfile] = useState<ApiProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<SpanNode | null>(null);
+  const [compareWith, setCompareWith] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCompareWith(null);
     getRun(runId)
       .then((d) => { if (!cancelled) setData(d); })
       .catch((e) => { if (!cancelled) setError(String(e)); });
+    getProfile(runId)
+      .then((pr) => { if (!cancelled) setProfile(pr); })
+      .catch(() => { if (!cancelled) setProfile(null); }); // cost display is best-effort
     return () => { cancelled = true; };
   }, [runId]);
 
@@ -436,6 +688,20 @@ function RunDetail({ runId, otherRuns }: { runId: string; otherRuns: ApiRun[] })
   const cost = summarizeCost(data.events);
   const duration = runDuration(data.events);
   const runEvents = data.events.filter((e) => !e.span_id);
+  const barMax = Math.max(1, maxSpanDuration(tree));
+  const spanCosts = new Map<string, number | null>();
+  profile?.llm_calls.forEach((c) => { if (c.span_id) spanCosts.set(c.span_id, c.estimated_cost_usd); });
+
+  // per-model breakdown from the server's own estimator
+  const byModel = new Map<string, { calls: number; input: number; output: number; usd: number }>();
+  profile?.llm_calls.forEach((c) => {
+    const m = byModel.get(c.model) ?? { calls: 0, input: 0, output: 0, usd: 0 };
+    m.calls += 1;
+    m.input += c.input_tokens ?? 0;
+    m.output += c.output_tokens ?? 0;
+    m.usd += c.estimated_cost_usd ?? 0;
+    byModel.set(c.model, m);
+  });
 
   return (
     <div style={{ padding: 20, overflowY: 'auto', height: '100%' }}>
@@ -456,20 +722,43 @@ function RunDetail({ runId, otherRuns }: { runId: string; otherRuns: ApiRun[] })
         <Stat label="Input tokens" value={cost.input_tokens.toLocaleString()} />
         <Stat label="Output tokens" value={cost.output_tokens.toLocaleString()} />
         {cost.cached_tokens > 0 && <Stat label="Cached tokens" value={cost.cached_tokens.toLocaleString()} tone="green" />}
+        <Stat label="Est. cost" value={profile ? fmtCost(profile.totals.estimated_cost_usd) : '…'} tone="green" />
       </div>
+      {profile && byModel.size > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+          {[...byModel.entries()].map(([model, m]) => (
+            <span key={model} style={{ ...mono, fontSize: 11.5, color: T.soft, background: '#f1f4fa', borderRadius: 999, padding: '3px 10px' }}>
+              {model} · {m.calls} call{m.calls === 1 ? '' : 's'} · {m.input.toLocaleString()} in / {m.output.toLocaleString()} out · {fmtCost(m.usd)}
+            </span>
+          ))}
+        </div>
+      )}
+      {profile && profile.totals.unknown_cost_calls > 0 && (
+        <div style={{ background: '#f4f6fa', color: T.soft, borderRadius: 8, padding: 10, fontSize: 12.5, marginBottom: 16 }}>
+          {profile.totals.unknown_cost_calls} call{profile.totals.unknown_cost_calls === 1 ? '' : 's'} cost unknown
+          {profile.unknown_pricing_models.length > 0 && <> (no published rate for {profile.unknown_pricing_models.join(', ')})</>} — excluded from the estimate, never guessed as zero.
+        </div>
+      )}
       {cost.unknown_usage && (
         <div style={{ background: T.amberSoft, color: T.amber, borderRadius: 8, padding: 10, fontSize: 12.5, marginBottom: 16 }}>
           ⚠ Some LLM calls report no token usage — cost data for those is unknown, not zero.
         </div>
       )}
 
-      <div style={sectionLabel}>Timeline</div>
+      <div style={sectionLabel}>Timeline <span style={{ textTransform: 'none', letterSpacing: 0, color: T.faint, fontWeight: 500 }}>(identical repeats collapsed — click to expand, click any row to inspect its inputs and outputs)</span></div>
       <div style={{ ...card, padding: 8 }}>
         {tree.length === 0 && <div style={{ color: T.faint, fontSize: 13, padding: 8 }}>No spans recorded for this run.</div>}
-        {tree.map((s) => <SpanRow key={s.span_id} node={s} depth={0} onSelect={setSelected} selectedId={selected?.span_id ?? null} />)}
+        {groupSpans(tree).map((g) => (
+          <SpanGroupRow key={g.key + g.nodes[0].span_id} group={g} depth={0} onSelect={setSelected}
+            selectedId={selected?.span_id ?? null} barMax={barMax} spanCosts={spanCosts} />
+        ))}
       </div>
 
-      <InvestigationPanel runId={runId} otherRuns={otherRuns} />
+      {compareWith && (
+        <CompareView baselineId={compareWith} runId={runId} onClose={() => setCompareWith(null)} />
+      )}
+
+      <InvestigationPanel runId={runId} otherRuns={otherRuns} runTags={data.run.tags} onCompare={setCompareWith} />
 
       <div style={sectionLabel}>
         {selected ? `Span: ${selected.label}` : 'Run-level events'}
@@ -544,7 +833,27 @@ const DEMO_CATALOG: Record<string, DemoInfo> = {
   'demo-6-baseline-bad': {
     title: 'The diverging run',
     shows: 'Identical start, then decision #3 diverges: instead of the live payment status the agent reads the payments archive and finds a stale UNPAID record from 2025-09-01 — and escalates a case that is already settled.',
-    fires: 'baseline_divergence (critical) — investigate it with demo-5 as the baseline and the finding pins the exact call where the two runs parted ways.',
+    fires: 'baseline_divergence (critical) — this run auto-compares against demo-5, and the side-by-side view pins the exact call where the two runs parted ways.',
+  },
+  'demo-7-token-gap': {
+    title: 'A missing usage field',
+    shows: 'The second model call came back through a wrapper that dropped the usage block. The recorder keeps the response but refuses to invent token numbers for it.',
+    fires: 'token_capture_gap (info) — and the cost banner says those tokens are unknown, not zero.',
+  },
+  'demo-8-conflicting': {
+    title: 'Two records that disagree',
+    shows: 'The archive says pay_881 was UNPAID as of 2025-09-01; the live record says PAID as of 2025-10-10. The agent sees both and correctly uses the fresh one.',
+    fires: 'conflicting_records (info) — an observation that old and fresh records coexist. No failure here: the newer value won.',
+  },
+  'demo-9-stale-value': {
+    title: 'A stale value actually consumed',
+    shows: 'The agent looks up the surcharge rate twice (fiscal years 2024-25 and 2025-26), then computes with the OLD 0.1 rate even though the fresh 0.15 is sitting in its own trace.',
+    fires: 'stale_consumption (warning) — the calculator call consumed the stale rate while the fresher value was on record. Plus conflicting_records (info) for the two rates.',
+  },
+  'demo-10-empty-search': {
+    title: 'An empty-search conclusion',
+    shows: 'Both searches return zero rows, and the agent answers "no matching transactions found, no refund due." Empty results describe the queries, not the corpus.',
+    fires: 'empty_search_conclusion (warning) — the run may have concluded "no data exists" from its own failed retrieval.',
   },
 };
 
@@ -651,7 +960,7 @@ function DashboardPage({ selectedRun, onSelectRun }: { selectedRun: string | nul
               <div style={{ ...sectionLabel, marginTop: 16 }}>Demo runs ({demo.length})</div>
               {demo.length === 0 && (
                 <div style={{ color: T.faint, fontSize: 12.5, lineHeight: 1.6 }}>
-                  No demo runs loaded. Use the Load examples button above to seed the six canonical examples.
+                  No demo runs loaded. Use the Load examples button above to seed the ten canonical examples.
                 </div>
               )}
               {demo.map(row)}
@@ -703,6 +1012,10 @@ const RESPONSIVE_CSS = `
     overflow-y: auto; padding: 12px;
   }
   .afrec-main { flex: 1; overflow: hidden; }
+  .afrec-spanrow { position: relative; }
+  .afrec-spanrow:hover { background: #f2f5fd; }
+  .afrec-spanrow .afrec-hint { visibility: hidden; }
+  .afrec-spanrow:hover .afrec-hint { visibility: visible; }
   @media (max-width: 800px) {
     .afrec-shell { flex-direction: column; height: auto; }
     .afrec-sidebar {

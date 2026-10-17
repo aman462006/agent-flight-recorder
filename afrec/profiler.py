@@ -32,6 +32,13 @@ DEFAULT_PRICING: Dict[str, PricingConfig] = {
     # Groq's published self-serve rate for Llama 3.3 70B Versatile as of its
     # 2026-08-26 enterprise transition (last public rate, groq.com pricing page).
     "llama-3.3-70b-versatile": PricingConfig(input_per_m=0.59, output_per_m=0.79),
+    # Groq published rates (models page, checked 2026-09): qwen3.8-27b preview
+    # and the OpenAI open-weight models Groq serves.
+    "qwen/qwen3.8-27b": PricingConfig(input_per_m=0.80, output_per_m=4.00),
+    "openai/gpt-oss-20b": PricingConfig(input_per_m=0.075, output_per_m=0.30),
+    "openai/gpt-oss-120b": PricingConfig(input_per_m=0.15, output_per_m=0.60),
+    # Google's published list rate for Gemini 2.0 Flash (AI Studio pricing page).
+    "gemini-2.0-flash": PricingConfig(input_per_m=0.10, output_per_m=0.40, cached_input_per_m=0.025),
 }
 
 

@@ -400,7 +400,13 @@ def _check_conflicting_records(inv: Investigation, events: List[Dict[str, Any]])
 _UNAVAILABILITY_RE = re.compile(
     r"not available|no records|no matching|unavailable|no data|"
     r"no (such )?(information|results?|entries|documents)|"
-    r"does not (contain|have|indicate|include|show)",
+    r"does not (contain|have|indicate|include|show)|"
+    # phrasings a real agent used on the first live capture (2026-10-17,
+    # gpt-oss-20b on Groq): "couldn't locate a transaction". Real agents
+    # do not read our regex; the rule has to meet their language.
+    r"couldn[’']?t (locate|find|retrieve)|could not (locate|find|retrieve)|"
+    r"(?:cannot|can[’']?t|unable to) (locate|find|retrieve)|"
+    r"no (transaction|payment|match)\b|not found",
     re.IGNORECASE,
 )
 

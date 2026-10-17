@@ -77,3 +77,32 @@ export async function seedExamples(): Promise<{ ok: boolean; seeded: string[] }>
   if (!res.ok) throw new Error(`POST /demo/seed failed: ${res.status}`);
   return res.json();
 }
+
+export interface ProfileLlmCall {
+  span_id: string | null;
+  label: string;
+  model: string;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cached_tokens: number | null;
+  estimated_cost_usd: number | null; // null = unknown (usage or price missing)
+  latency_ms: number | null;
+}
+
+export interface ApiProfile {
+  totals: {
+    input_tokens: number; output_tokens: number; cached_tokens: number;
+    estimated_cost_usd: number; unknown_cost_calls: number; llm_calls: number;
+  };
+  llm_calls: ProfileLlmCall[];
+  slowest_spans: { span_id: string; label: string; latency_ms: number | null; open: boolean }[];
+  unknown_pricing_models: string[];
+  pricing_note: string;
+}
+
+/** Cost + latency profile (server-side estimator, single source of truth). */
+export async function getProfile(runId: string): Promise<ApiProfile> {
+  const res = await fetch(`${API_BASE}/runs/${encodeURIComponent(runId)}/profile`);
+  if (!res.ok) throw new Error(`GET /profile failed: ${res.status}`);
+  return res.json();
+}

@@ -192,3 +192,94 @@ export function countBySeverity(findings: InvestigationFinding[]): { critical: n
   }
   return counts;
 }
+
+// -- Phase 9: baseline comparison + timeline grouping --------------------------
+
+export interface DecisionRow {
+  index: number;
+  type: 'tool_call' | 'llm_call' | 'llm_payload' | 'tool_payload';
+  label: string;      // human label for the row
+  detail: string;     // compact JSON of what was called / returned
+  fingerprint: string; // canonical JSON — mirrors afrec.replay._fingerprint
+  event: Event;
+}
+
+/** Reduce an event stream to the agent's decisions, mirroring the server's
+ *  diff fingerprint (afrec/replay.py) so client and server agree on where
+ *  two runs first diverge. */
+export function decisionSequence(events: Event[]): DecisionRow[] {
+  const out: DecisionRow[] = [];
+  for (const ev of events) {
+    const data = ev.data ?? {};
+    if (ev.kind === 'span.start') {
+      const label = String(data['label'] ?? '');
+      if (label.startsWith('tool:')) {
+        out.push({
+          index: out.length, type: 'tool_call',
+          label: label.slice(5), detail: JSON.stringify(data['arguments'] ?? {}),
+          fingerprint: `tool_call|${label.slice(5)}|${JSON.stringify(data['arguments'] ?? {})}`,
+          event: ev,
+        });
+      } else if (label.startsWith('llm:')) {
+        out.push({
+          index: out.length, type: 'llm_call', label: label.slice(4),
+          detail: '', fingerprint: `llm_call|${label.slice(4)}`, event: ev,
+        });
+      }
+    } else if (ev.kind === 'llm.response') {
+      out.push({
+        index: out.length, type: 'llm_payload', label: 'model response',
+        detail: `${ev.input_tokens ?? '?'} in / ${ev.output_tokens ?? '?'} out`,
+        fingerprint: `llm_payload|${ev.model}|${ev.input_tokens}|${ev.output_tokens}`,
+        event: ev,
+      });
+    } else if (ev.kind === 'tool.result') {
+      out.push({
+        index: out.length, type: 'tool_payload', label: 'tool result',
+        detail: JSON.stringify(data['payload'] ?? null).slice(0, 200),
+        fingerprint: `tool_payload|${JSON.stringify(data['payload'] ?? null)}`,
+        event: ev,
+      });
+    }
+  }
+  return out;
+}
+
+/** Index of the first decision where two runs disagree, or null when the
+ *  fingerprints match. Length mismatches count as a divergence at the first
+ *  position where one run stops — same rule the server applies. */
+export function firstDivergence(a: DecisionRow[], b: DecisionRow[]): number | null {
+  const n = Math.max(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const fa = a[i]?.fingerprint;
+    const fb = b[i]?.fingerprint;
+    if (fa !== fb) return i;
+  }
+  return null;
+}
+
+/** Key that identifies "the same decision" for collapsing repeated spans. */
+export function spanGroupKey(node: SpanNode): string {
+  const start = node.events.find((e) => e.kind === 'span.start');
+  const data = start?.data ?? {};
+  const payload = data['arguments'] ?? data['messages'] ?? null;
+  return `${node.label}|${JSON.stringify(payload)}`;
+}
+
+export interface SpanGroup {
+  key: string;
+  nodes: SpanNode[];
+}
+
+/** Collapse runs of CONSECUTIVE identical decisions (same label, same args)
+ *  into groups — the 20x loop renders as one row with a ×20 chip. */
+export function groupSpans(nodes: SpanNode[]): SpanGroup[] {
+  const groups: SpanGroup[] = [];
+  for (const node of nodes) {
+    const key = spanGroupKey(node);
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.nodes.push(node);
+    else groups.push({ key, nodes: [node] });
+  }
+  return groups;
+}

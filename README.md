@@ -32,7 +32,7 @@ Full suite, run just now on this repo: 57/57 pytest, 10/10 vitest.
 
 ## Failure investigator (the headline)
 
-`GET /runs/{id}/investigate` runs eight deterministic rules over a trace.
+`GET /runs/{id}/investigate` runs twelve deterministic rules over a trace.
 Every finding separates what the trace *observed* from the investigator's
 *hypothesis*, and carries verbatim evidence excerpts:
 
@@ -58,14 +58,14 @@ Two different things live here, and conflating them is how evals lie.
 
 ### Synthetic regression suite (`bench/run_benchmark.py`)
 
-`python -m bench.run_benchmark` runs 103 seeded scenarios (40 clean,
-63 scripted failures across 7 types) through the investigator:
+`python -m bench.run_benchmark` runs 121 seeded scenarios (40 clean,
+81 scripted failures across 9 types) through the investigator:
 
 | Metric | Measured (seed 42) |
 |---|---|
-| Failures fully detected | 63/63 |
+| Failures fully detected | 81/81 |
 | Clean runs reported clean | 40/40 (0 false-positive findings) |
-| Per-rule precision | 1.00 (all 8 rules) |
+| Per-rule precision | 1.00 (all 9 failure types) |
 | Rule latency | microbenchmark noise (~0.01 ms in-process); not a claim about usefulness |
 
 Read this honestly: the failures are scripted by the same author who wrote

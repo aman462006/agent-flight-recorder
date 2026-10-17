@@ -116,3 +116,72 @@ it('computes per-span token totals from llm.response events', () => {
     ])).toEqual({ input: 1000, output: 200, cached: 100 });
     expect(spanTokens([ev({ kind: 'span.end', data: {} })])).toBeNull();
   });
+
+// -- compare view: decision sequence / divergence / grouping -------------------
+
+import { decisionSequence, firstDivergence, groupSpans, SpanNode } from './trace';
+
+describe('decisionSequence', () => {
+  it('reduces a trace to decisions in order, mirroring the server fingerprint', () => {
+    const seq = decisionSequence([
+      ev({ kind: 'run.start' }),
+      ev({ kind: 'span.start', span_id: 's1', data: { label: 'llm:gpt-4o-mini', messages: [] } }),
+      ev({ kind: 'llm.response', span_id: 's1', data: { payload: 'hi' }, input_tokens: 10, output_tokens: 5, model: 'gpt-4o-mini' }),
+      ev({ kind: 'span.start', span_id: 's2', data: { label: 'tool:db.lookup', arguments: { id: 1 } } }),
+      ev({ kind: 'tool.result', span_id: 's2', data: { payload: { state: 'PAID' } } }),
+    ]);
+    expect(seq.map((d) => d.type)).toEqual(['llm_call', 'llm_payload', 'tool_call', 'tool_payload']);
+    expect(seq[2].label).toBe('db.lookup');
+    expect(seq[2].detail).toBe('{"id":1}');
+  });
+});
+
+describe('firstDivergence', () => {
+  const seqA = decisionSequence([
+    ev({ kind: 'span.start', data: { label: 'tool:payments.status', arguments: { p: 'x' } } }),
+    ev({ kind: 'span.start', data: { label: 'tool:db.lookup', arguments: { id: 2 } } }),
+  ]);
+  it('finds the first differing decision', () => {
+    const seqB = decisionSequence([
+      ev({ kind: 'span.start', data: { label: 'tool:payments.archive', arguments: { p: 'x' } } }),
+      ev({ kind: 'span.start', data: { label: 'tool:db.lookup', arguments: { id: 2 } } }),
+    ]);
+    expect(firstDivergence(seqA, seqB)).toBe(0);
+  });
+  it('returns null for identical sequences', () => {
+    expect(firstDivergence(seqA, seqA)).toBeNull();
+  });
+  it('flags a length mismatch at the position where one run stops', () => {
+    const seqShort = decisionSequence([
+      ev({ kind: 'span.start', data: { label: 'tool:payments.status', arguments: { p: 'x' } } }),
+    ]);
+    expect(firstDivergence(seqA, seqShort)).toBe(1);
+  });
+});
+
+describe('groupSpans', () => {
+  const leafSpan = (id: string, label: string, args: unknown): SpanNode => ({
+    span_id: id, label, kind: label.startsWith('tool:') ? 'tool' : 'llm',
+    parent_span_id: null, start_ms: 0, end_ms: 100, duration_ms: 100,
+    events: [ev({ kind: 'span.start', span_id: id, data: { label, arguments: args } })],
+    children: [], incomplete: false,
+  });
+  it('collapses consecutive identical decisions and keeps singles alone', () => {
+    const groups = groupSpans([
+      leafSpan('s1', 'llm:m', []),
+      leafSpan('s2', 'llm:m', []),
+      leafSpan('s3', 'llm:m', []),
+      leafSpan('s4', 'tool:search', { q: 'a' }),
+      leafSpan('s5', 'llm:m', []),
+    ]);
+    expect(groups.map((g) => g.nodes.length)).toEqual([3, 1, 1]);
+  });
+  it('does not collapse non-consecutive repeats', () => {
+    const groups = groupSpans([
+      leafSpan('s1', 'tool:db.lookup', { id: 1 }),
+      leafSpan('s2', 'tool:search', { q: 'a' }),
+      leafSpan('s3', 'tool:db.lookup', { id: 1 }),
+    ]);
+    expect(groups.map((g) => g.nodes.length)).toEqual([1, 1, 1]);
+  });
+});

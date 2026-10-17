@@ -335,6 +335,18 @@ class TestEmptySearchConclusion:
         assert "2 search calls" in f.observed
         assert len(f.evidence) >= 3
 
+    def test_fires_on_the_real_live_capture_phrasing(self):
+        """Regression: the first real captured failure (2026-10-17, Groq
+        gpt-oss-20b) answered "couldn’t locate a transaction" — a curly
+        apostrophe the regex originally missed. The rule must meet the
+        language real agents use, not just our test fixtures."""
+        ev = ([_tool_span("s1", "search_transactions", {"query": "PAY-404"}, 1),
+               _tool_result("s1", [], 2), _span_end("s1", "search_transactions", 3)]
+              + _llm_answer("s2", 4, "I\u2019m sorry, but I couldn\u2019t locate a transaction "
+                                   "with the reference PAY-404 in our ledger.") + [_run_end(6)])
+        inv = investigate_run(ev, run_meta={"task": "check payment PAY-404", "status": "completed"})
+        assert "empty_search_conclusion" in _rules(inv)
+
     def test_silent_when_any_tool_returned_real_evidence(self):
         ev = ([_tool_span("s1", "search", {"query": "4724.096"}, 1),
                _tool_result("s1", [], 2), _span_end("s1", "search", 3),
