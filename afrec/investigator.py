@@ -206,6 +206,9 @@ def investigate_run(events: List[Dict[str, Any]],
                 evidence=[_ev(events, i)],
             ))
 
+    # -- rule: repeated decisions (the token-burning loop) ---------------------
+    _check_repeated_decisions(inv, events)
+
     # -- rule: conflicting records (the stale-data trap) ----------------------
     _check_conflicting_records(inv, events)
 
@@ -256,6 +259,75 @@ def _severity_order(f: Finding) -> Tuple[int, str]:
 def _add(inv: Investigation, f: Finding) -> None:
     inv.findings.append(f)
     inv.clean = False
+
+
+LOOP_THRESHOLD = 5  # identical consecutive decisions before this is called a loop
+
+
+def _decision_key(ev: Dict[str, Any]) -> Optional[Tuple[Any, ...]]:
+    """Fingerprint a span.start as a decision: what was called, with what.
+
+    Tool calls fingerprint on arguments; LLM calls on the message list. The
+    fingerprint is content-based, so a loop is only flagged when the agent
+    repeats the SAME call unchanged - retries with different arguments, or a
+    legitimate retry after an error result, are different decisions.
+    """
+    label = (ev.get("data") or {}).get("label", "")
+    if not isinstance(label, str) or not (label.startswith("tool:") or label.startswith("llm:")):
+        return None
+    data = ev.get("data") or {}
+    payload = data.get("arguments") if label.startswith("tool:") else data.get("messages")
+    return (label, json.dumps(payload, sort_keys=True, default=str))
+
+
+def _check_repeated_decisions(inv: Investigation, events: List[Dict[str, Any]]) -> None:
+    """The same decision made LOOP_THRESHOLD+ times in a row with no progress
+    between repetitions. The classic failure: a stuck agent burning tokens on
+    an identical call because it never reads its own results."""
+    decisions: List[Tuple[Any, ...]] = []
+    idx_by_key: Dict[Any, List[int]] = {}
+    for i, ev in enumerate(events):
+        if ev.get("kind") != "span.start":
+            continue
+        key = _decision_key(ev)
+        if key is None:
+            continue
+        decisions.append(key)
+        idx_by_key.setdefault(key, []).append(i)
+
+    # count the longest CONSECUTIVE run of each identical decision
+    i = 0
+    while i < len(decisions):
+        j = i
+        while j + 1 < len(decisions) and decisions[j + 1] == decisions[i]:
+            j += 1
+        count = j - i + 1
+        if count >= LOOP_THRESHOLD:
+            key = decisions[i]
+            span_ids = [events[k].get("span_id") for k in idx_by_key[key][i:i + count] if k < len(events)]
+            starts = idx_by_key[key][i:i + count]
+            # honest token burn: sum usage of the responses belonging to these spans
+            span_id_set = {events[k].get("span_id") for k in starts}
+            in_tok = out_tok = 0
+            for ev in events:
+                if ev.get("kind") == "llm.response" and ev.get("span_id") in span_id_set:
+                    in_tok += ev.get("input_tokens") or 0
+                    out_tok += ev.get("output_tokens") or 0
+            label = key[0]
+            burn = ""
+            if in_tok or out_tok:
+                burn = f", {in_tok} input + {out_tok} output tokens recorded across them"
+            _add(inv, Finding(
+                rule="repeated_decision", severity=WARNING,
+                observed=f"decision '{label}' repeated {count} times in a row with identical "
+                         f"arguments{burn}",
+                hypothesis="the agent is stuck in a loop: it keeps making the same call "
+                           "without consuming the result, which burns tokens and never "
+                           "progresses - check what the responses contained and why the "
+                           "agent ignored them",
+                evidence=[_ev(events, k) for k in starts[:3]] + ([_ev(events, starts[-1])] if count > 3 else []),
+            ))
+        i = j + 1
 
 
 def _check_conflicting_records(inv: Investigation, events: List[Dict[str, Any]]) -> None:

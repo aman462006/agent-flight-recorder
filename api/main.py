@@ -145,6 +145,27 @@ def ingest_event(ev: EventIn) -> Dict[str, Any]:
     return {"ok": True, "event_id": event.event_id}
 
 
+@app.post("/demo/seed")
+def seed_demo() -> Dict[str, Any]:
+    """Seed the six canonical example runs (healthy, crash, tool-without-result,
+    loop, baseline pair). Idempotent: fixed ids mean re-seeding never duplicates.
+
+    The seeds are synthetic and tagged as such on every run - illustrative
+    examples that fire the same deterministic rules real failures do.
+    """
+    from afrec.demo_seed import build_demo_runs
+    seeded = []
+    try:
+        for meta, evs in build_demo_runs():
+            store.save_run(meta)
+            for e in evs:
+                store.save_event(e)
+            seeded.append(meta.run_id)
+    except (sqlite3.Error, StoreError) as e:
+        raise HTTPException(status_code=503, detail=f"store unavailable: {e}")
+    return {"ok": True, "seeded": seeded}
+
+
 @app.get("/runs")
 def list_runs() -> List[Dict[str, Any]]:
     return store.list_runs()

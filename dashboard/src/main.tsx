@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { listRuns, getRun, investigateRun, ApiRun, ApiEvent, ApiInvestigation } from './api';
+import { listRuns, getRun, investigateRun, seedExamples, ApiRun, ApiEvent, ApiInvestigation } from './api';
 import { sortFindings, countBySeverity } from './trace';
 import { buildSpanTree, summarizeCost, runDuration, spanTokens, SpanNode } from './trace';
 
@@ -495,11 +495,20 @@ function RunDetail({ runId, otherRuns }: { runId: string; otherRuns: ApiRun[] })
 function DashboardPage({ selectedRun, onSelectRun }: { selectedRun: string | null; onSelectRun: (id: string | null) => void }) {
   const [runs, setRuns] = useState<ApiRun[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
 
   const refresh = () => {
     listRuns()
       .then(setRuns)
       .catch((e) => setError(String(e)));
+  };
+
+  const loadExamples = () => {
+    setSeeding(true);
+    seedExamples()
+      .then(() => listRuns())
+      .then((rs: ApiRun[]) => { setRuns(rs); setSeeding(false); })
+      .catch((e: unknown) => { setError(String(e)); setSeeding(false); });
   };
 
   useEffect(refresh, []);
@@ -510,7 +519,13 @@ function DashboardPage({ selectedRun, onSelectRun }: { selectedRun: string | nul
       <aside className="afrec-sidebar">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <span style={{ ...sectionLabel, margin: 0 }}>Runs</span>
-          <button onClick={refresh} style={{ ...btnGhost, padding: '4px 10px', fontSize: 11 }}>↻ Refresh</button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button onClick={loadExamples} disabled={seeding}
+              style={{ ...btnGhost, padding: '4px 10px', fontSize: 11, opacity: seeding ? 0.6 : 1 }}>
+              {seeding ? 'Loading…' : '★ Load examples'}
+            </button>
+            <button onClick={refresh} style={{ ...btnGhost, padding: '4px 10px', fontSize: 11 }}>↻ Refresh</button>
+          </div>
         </div>
         {error && <div style={{ color: T.red, fontSize: 12, marginBottom: 8 }}>Could not reach the API: {error}</div>}
         {!runs && !error && <div style={{ color: T.soft, fontSize: 13 }}>Loading runs…</div>}

@@ -71,3 +71,9 @@ export async function investigateRun(runId: string, baselineRunId?: string): Pro
   if (!res.ok) throw new Error(`investigate failed: ${res.status}`);
   return res.json();
 }
+
+export async function seedExamples(): Promise<{ ok: boolean; seeded: string[] }> {
+  const res = await fetch(`${API_BASE}/demo/seed`, { method: 'POST' });
+  if (!res.ok) throw new Error(`POST /demo/seed failed: ${res.status}`);
+  return res.json();
+}
