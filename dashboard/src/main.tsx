@@ -832,7 +832,7 @@ const DEMO_CATALOG: Record<string, DemoInfo> = {
   },
   'demo-6-baseline-bad': {
     title: 'The diverging run',
-    shows: 'Identical start, then decision #3 diverges: instead of the live payment status the agent reads the payments archive and finds a stale UNPAID record from 2025-09-01 — and escalates a case that is already settled.',
+    shows: 'Identical start, then the fingerprints part ways at decision #5: instead of the live payment status the agent reads the payments archive and finds a stale UNPAID record from 2025-09-01 — and escalates a case that is already settled.',
     fires: 'baseline_divergence (critical) — this run auto-compares against demo-5, and the side-by-side view pins the exact call where the two runs parted ways.',
   },
   'demo-7-token-gap': {
