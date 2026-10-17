@@ -1,0 +1,182 @@
+{
+ "r01": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T02:26:23+0530"
+ },
+ "r02": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T02:27:09+0530"
+ },
+ "r03": {
+  "label": "failure",
+  "failure_type": "stale_data",
+  "note": null,
+  "labeled_at": "2026-10-17T02:30:01+0530"
+ },
+ "r04": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:02:11+0530"
+ },
+ "r05": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:02:41+0530"
+ },
+ "r06": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:03:06+0530"
+ },
+ "r07": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:03:42+0530"
+ },
+ "r08": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:05:25+0530"
+ },
+ "r09": {
+  "label": "failure",
+  "failure_type": "stale_data",
+  "note": "claimed the 2023 rate (74.5) in the final answer while the calculation used the 2025 rate (83.2); internal contradiction.",
+  "labeled_at": "2026-10-17T04:07:12+0530"
+ },
+ "r10": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:07:32+0530"
+ },
+ "r11": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:08:22+0530"
+ },
+ "r12": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:15:16+0530"
+ },
+ "r13": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:16:09+0530"
+ },
+ "r14": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:16:27+0530"
+ },
+ "r15": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:16:48+0530"
+ },
+ "r16": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:17:25+0530"
+ },
+ "r17": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T04:17:52+0530"
+ },
+ "r18": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T14:54:53+0530"
+ },
+ "r19": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T14:55:27+0530"
+ },
+ "r20": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T14:55:39+0530"
+ },
+ "r21": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T14:56:43+0530"
+ },
+ "r22": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T14:56:56+0530"
+ },
+ "r23": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T14:57:10+0530"
+ },
+ "r24": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T14:57:23+0530"
+ },
+ "r25": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T14:57:41+0530"
+ },
+ "r26": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T14:58:12+0530"
+ },
+ "r27": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T14:58:39+0530"
+ },
+ "r28": {
+  "label": "success",
+  "failure_type": null,
+  "note": null,
+  "labeled_at": "2026-10-17T14:59:36+0530"
+ },
+ "r29": {
+  "label": "failure",
+  "failure_type": "wrong_answer",
+  "note": "corpus contained the answer (oldest record 2022); all 3 queries used concept words that matched nothing, agent concluded absence falsely",
+  "labeled_at": "2026-10-17T15:01:16+0530"
+ },
+ "r30": {
+  "label": "success",
+  "failure_type": null,
+  "note": "self-corrected a crore-to-million unit error mid-run after re-verifying the source.",
+  "labeled_at": "2026-10-17T15:03:13+0530"
+ }
+}
