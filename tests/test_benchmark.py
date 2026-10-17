@@ -14,8 +14,8 @@ from bench.scenarios import generate_scenarios, GROUND_TRUTH, CLEAN, MIX
 class TestScenarioSuite:
     def test_suite_size_is_in_the_declared_range(self):
         scenarios = generate_scenarios()
-        assert 50 <= len(scenarios) <= 120
-        assert len(scenarios) == len(MIX)  # 103: 40 clean + 63 failures
+        assert 50 <= len(scenarios) <= 150
+        assert len(scenarios) == len(MIX)  # 121: 40 clean + 81 failures (9 failure types)
 
     def test_deterministic_same_seed_same_scenarios(self):
         a = generate_scenarios(seed=123)

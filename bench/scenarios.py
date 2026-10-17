@@ -29,6 +29,8 @@ CONFLICTING_RECORDS = "conflicting_records"
 TOKEN_GAP = "token_capture_gap"
 BASELINE_DIVERGENCE = "baseline_divergence"
 NEVER_ENDED = "run_never_ended"
+STALE_CONSUMPTION = "stale_consumption"
+EMPTY_SEARCH_CONCLUSION = "empty_search_conclusion"
 
 GROUND_TRUTH: Dict[str, List[str]] = {
     CLEAN: [],
@@ -44,6 +46,8 @@ GROUND_TRUTH: Dict[str, List[str]] = {
     TOKEN_GAP: ["token_capture_gap"],
     BASELINE_DIVERGENCE: ["baseline_divergence"],
     NEVER_ENDED: ["run_never_ended"],
+    STALE_CONSUMPTION: ["stale_consumption"],
+    EMPTY_SEARCH_CONCLUSION: ["empty_search_conclusion"],
 }
 
 # A crashed/error run keeps an unclosed span by construction and has no
@@ -176,19 +180,52 @@ def _build(kind: str, i: int, rng: random.Random) -> Scenario:
                         {"run_id": sid, "status": "completed"},
                         baseline_events=good, baseline_meta={"run_id": f"{sid}_baseline", "status": "completed"})
 
+    if kind == STALE_CONSUMPTION:
+        fresh_year = rng.choice([2024, 2025])
+        ev = ([_span("s1", "search", {"query": q}, 1),
+               _result("s1", [
+                   {"metric": "usd_inr_rate", "value": 74.5, "as_of": "2023-12-31"},
+                   {"metric": "usd_inr_rate", "value": 83.2, "as_of": f"{fresh_year}-10-01"},
+               ], 2),
+               _end("s1", "search", 3),
+               _span("s2", "calculator", {"expression": "1000000 * 74.5"}, 4),
+               _result("s2", {"value": 74500000}, 5),
+               _end("s2", "calculator", 6)]
+              + _llm("s3", 7)
+              + [{"kind": "run.end", "t_offset_ms": 11}])
+        return Scenario(sid, kind, list(GROUND_TRUTH[kind]), ev,
+                        {"run_id": sid, "status": "completed"})
+
+    if kind == EMPTY_SEARCH_CONCLUSION:
+        ev = ([_span("s1", "search", {"query": q}, 1),
+               _result("s1", [], 2), _end("s1", "search", 3),
+               _span("s2", "search", {"query": f"{q} retry"}, 4),
+               _result("s2", [], 5), _end("s2", "search", 6),
+               {"kind": "span.start", "span_id": "s3", "t_offset_ms": 7,
+                "data": {"label": "llm:mock-gpt"}},
+               {"kind": "llm.response", "span_id": "s3", "t_offset_ms": 8,
+                "data": {"payload": "No matching records, so the answer is not available."},
+                "input_tokens": 400, "output_tokens": 30, "model": "mock-gpt"},
+               {"kind": "span.end", "span_id": "s3", "t_offset_ms": 9,
+                "data": {"label": "llm:mock-gpt"}}]
+              + [{"kind": "run.end", "t_offset_ms": 10}])
+        return Scenario(sid, kind, list(GROUND_TRUTH[kind]), ev,
+                        {"run_id": sid, "status": "completed"})
+
     raise ValueError(f"unknown scenario kind {kind}")
 
 
-# The benchmark mix: 40% clean (false-positive pressure), 60% failures
-# spread evenly across the seven failure types.
+# The benchmark mix: clean-heavy (false-positive pressure), failures
+# spread evenly across the nine failure types.
 MIX: List[str] = (
     [CLEAN] * 40
     + [CRASHED, ERROR_EVENT, TOOL_NO_RESULT, CONFLICTING_RECORDS,
-       TOKEN_GAP, BASELINE_DIVERGENCE, NEVER_ENDED] * 9
+       TOKEN_GAP, BASELINE_DIVERGENCE, NEVER_ENDED,
+       STALE_CONSUMPTION, EMPTY_SEARCH_CONCLUSION] * 9
 )
 
 
 def generate_scenarios(seed: int = 42) -> List[Scenario]:
-    """Deterministic scenario suite. Length = len(MIX) (currently 103)."""
+    """Deterministic scenario suite. Length = len(MIX) (currently 121)."""
     rng = random.Random(seed)
     return [_build(kind, i, rng) for i, kind in enumerate(MIX)]

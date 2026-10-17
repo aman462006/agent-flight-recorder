@@ -32,7 +32,21 @@ The rules (each independently testable):
   unclosed_span          span started but never ended (crash mid-flight)
   tool_without_result    a tool call ended without a recorded result
   conflicting_records    two tool results for the same entity disagree
-                         on a date-like field (the stale-data trap)
+                         on a date-like field. Reported as info: old and
+                         fresh records legitimately coexist in most corpora.
+                         The failure is consuming the stale one, which is
+                         stale_consumption's job to flag.
+  stale_consumption      a value was consumed (calculator or final answer)
+                         that is NOT the freshest on record for that
+                         entity+metric, while a fresher value exists in
+                         the same trace. Fires only when the older value is
+                         consumed and the fresher one is not; an answer that
+                         cites both is deliberation, not staleness. A task
+                         that explicitly asks for an older point in time
+                         never fires it.
+  empty_search_conclusion every search returned empty and the final answer
+                         asserts the information is not available — empty
+                         results describe the queries, not the corpus
   token_capture_gap      llm.response events with no token usage
   baseline_divergence    earliest meaningful divergence vs a baseline run
 """
@@ -40,6 +54,7 @@ The rules (each independently testable):
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -212,6 +227,10 @@ def investigate_run(events: List[Dict[str, Any]],
     # -- rule: conflicting records (the stale-data trap) ----------------------
     _check_conflicting_records(inv, events)
 
+    # -- rules: value honesty (stale consumption, empty-search conclusion) ----
+    _check_stale_consumption(inv, events, run_meta)
+    _check_empty_search_conclusion(inv, events)
+
     # -- rule: token capture gaps --------------------------------------------
     for i, ev in enumerate(events):
         if ev.get("kind") == "llm.response" and not (ev.get("input_tokens") or ev.get("output_tokens")):
@@ -358,15 +377,183 @@ def _check_conflicting_records(inv: Investigation, events: List[Dict[str, Any]])
             if len(values) > 1:
                 parts = ", ".join(f"{v} (event {events[i].get('event_id') or i})" for v, i in pairs)
                 _add(inv, Finding(
-                    rule="conflicting_records", severity=WARNING,
+                    rule="conflicting_records", severity=INFO,
                     observed=f"tool results disagree for entity '{entity}': "
                              f"{key} = {parts}",
-                    hypothesis="one of these records is stale and the agent may "
-                               "have consumed the older value without "
-                               "re-verifying — check which value later spans "
-                               "used",
+                    hypothesis="one of these records is stale. Old and fresh records "
+                               "legitimately coexist in most corpora, so this is an "
+                               "observation, not a failure — the stale_consumption "
+                               "rule flags the run only if the older value was "
+                               "actually consumed",
                     evidence=[_ev(events, i) for _, i in pairs],
                 ))
+
+
+# == stale_consumption ======================================================
+# The r09-shaped failure: a tool result contains an old AND a fresh value for
+# the same entity+metric; the agent consumes the old one. The rule is strict
+# on purpose — it fires ONLY when (a) a fresher value exists on record in the
+# same trace, (b) the older value was consumed (calculator args or the final
+# answer) and the fresher one was not, and (c) the task did not explicitly
+# ask for that older point in time. Everything else stays silent.
+
+_UNAVAILABILITY_RE = re.compile(
+    r"not available|no records|no matching|unavailable|no data|"
+    r"no (such )?(information|results?|entries|documents)|"
+    r"does not (contain|have|indicate|include|show)",
+    re.IGNORECASE,
+)
+
+
+def _norm_date(row: Dict[str, Any]) -> Optional[Tuple[int, int, int]]:
+    """Normalise a row's date to comparable (y, m, d); missing parts become 0.
+    as_of/updated_at/date-style strings win over a bare `year` int."""
+    for key in ("as_of", "as_of_date", "updated_at", "date"):
+        v = row.get(key)
+        if isinstance(v, str) and len(v) >= 4 and v[:4].isdigit():
+            y = int(v[:4])
+            m = int(v[5:7]) if len(v) >= 7 and v[5:7].isdigit() else 0
+            d = int(v[8:10]) if len(v) >= 10 and v[8:10].isdigit() else 0
+            return (y, m, d)
+    y = row.get("year")
+    if isinstance(y, int) and not isinstance(y, bool):
+        return (y, 0, 0)
+    return None
+
+
+def _mentions(text: str, value: Any) -> bool:
+    """True if a numeric value literally appears in text, comma-tolerant,
+    with digit/dot boundaries so 83.2 never matches 183.2 or 83200000."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    s = str(int(value)) if isinstance(value, float) and value.is_integer() else str(value)
+    flat = str(text).replace(",", "")
+    return re.search(rf"(?<![\d.]){re.escape(s)}(?![\d.])", flat) is not None
+
+
+def _dated_records(events: List[Dict[str, Any]]) -> Dict[Tuple[Any, Any], List[Dict[str, Any]]]:
+    """(entity, metric) -> every dated value on record, in trace order."""
+    reg: Dict[Tuple[Any, Any], List[Dict[str, Any]]] = {}
+    for i, ev in enumerate(events):
+        if ev.get("kind") != "tool.result":
+            continue
+        payload = (ev.get("data") or {}).get("payload")
+        rows = payload if isinstance(payload, list) else [payload]
+        for row in rows:
+            if not isinstance(row, dict) or "value" not in row:
+                continue
+            date = _norm_date(row)
+            if date is None:
+                continue
+            entity = next((row[k] for k in ENTITY_KEYS if k in row), None)
+            metric = row.get("metric")
+            if entity is None and metric is None:
+                continue
+            date_text = str(next(
+                (row[k] for k in ("as_of", "as_of_date", "updated_at", "date", "year") if k in row), ""))
+            reg.setdefault((entity, metric), []).append(
+                {"value": row["value"], "date": date, "date_text": date_text, "idx": i})
+    return reg
+
+
+def _check_stale_consumption(inv: Investigation, events: List[Dict[str, Any]],
+                             run_meta: Optional[Dict[str, Any]]) -> None:
+    reg = _dated_records(events)
+    if not reg:
+        return
+    task_text = str((run_meta or {}).get("task") or "")
+    calcs: List[Tuple[int, str]] = []
+    answers: List[Tuple[int, str]] = []
+    for i, ev in enumerate(events):
+        if ev.get("kind") == "span.start":
+            data = ev.get("data") or {}
+            label = data.get("label") or ""
+            args = data.get("arguments")
+            if (isinstance(label, str) and label.startswith("tool:")
+                    and isinstance(args, dict) and "expression" in args):
+                calcs.append((i, str(args["expression"])))
+        elif ev.get("kind") == "llm.response":
+            payload = (ev.get("data") or {}).get("payload")
+            answers.append((i, str(payload)))
+    final_answer = answers[-1] if answers else None
+
+    for (entity, metric), records in reg.items():
+        if len({r["value"] for r in records}) < 2 or len({r["date"] for r in records}) < 2:
+            continue  # no fresher alternative on record — silence, not a guess
+        freshest = max(records, key=lambda r: r["date"])
+        name = str(entity) if entity is not None else str(metric)
+        for r in records:
+            if r["date"] >= freshest["date"] or r["value"] == freshest["value"]:
+                continue
+            if task_text and r["date_text"] and r["date_text"] in task_text:
+                continue  # the task explicitly asked for this older point in time
+            consumed: List[Tuple[int, str]] = []
+            for ci, expr in calcs:
+                if _mentions(expr, r["value"]) and not _mentions(expr, freshest["value"]):
+                    consumed.append((ci, f"calculator expression '{expr[:60]}'"))
+            if final_answer is not None:
+                ai, atext = final_answer
+                if _mentions(atext, r["value"]) and not _mentions(atext, freshest["value"]):
+                    consumed.append((ai, "the final answer"))
+            for ci, where in consumed:
+                _add(inv, Finding(
+                    rule="stale_consumption", severity=WARNING,
+                    observed=f"{where} used {r['value']!r} for '{name}' dated "
+                             f"{r['date_text']}, while the fresher value "
+                             f"{freshest['value']!r} dated {freshest['date_text']} "
+                             "is also on record in this trace",
+                    hypothesis="the agent consumed an outdated value although a fresher "
+                               "one existed in its own trace — a stale-data failure with "
+                               "the evidence on both sides",
+                    evidence=[_ev(events, r["idx"]), _ev(events, freshest["idx"]), _ev(events, ci)],
+                ))
+
+
+# == empty_search_conclusion =================================================
+# The r29-shaped failure: every search came back empty and the agent answered
+# "not available". Empty results are an observation about the agent's queries,
+# not proof about the corpus. Fires ONLY when every search was empty, no other
+# tool produced evidence, and the final answer asserts unavailability.
+
+def _check_empty_search_conclusion(inv: Investigation, events: List[Dict[str, Any]]) -> None:
+    span_label: Dict[Any, str] = {}
+    for ev in events:
+        if ev.get("kind") == "span.start":
+            data = ev.get("data") or {}
+            label = data.get("label")
+            if isinstance(label, str):
+                span_label[ev.get("span_id")] = label
+    search_results: List[Tuple[int, bool]] = []   # (event index, payload empty?)
+    other_evidence = False
+    for i, ev in enumerate(events):
+        if ev.get("kind") != "tool.result":
+            continue
+        payload = (ev.get("data") or {}).get("payload")
+        empty = payload is None or payload == [] or payload == {} or payload == ""
+        label = span_label.get(ev.get("span_id"), "")
+        if "search" in label:
+            search_results.append((i, empty))
+        elif not empty:
+            other_evidence = True
+    if not search_results or other_evidence or not all(e for _, e in search_results):
+        return  # no searches, or real evidence exists, or a search found something
+    final_idx, final_text = None, ""
+    for i, ev in enumerate(events):
+        if ev.get("kind") == "llm.response":
+            final_idx = i
+            final_text = str((ev.get("data") or {}).get("payload") or "")
+    if final_idx is None or not _UNAVAILABILITY_RE.search(final_text):
+        return
+    n = len(search_results)
+    _add(inv, Finding(
+        rule="empty_search_conclusion", severity=WARNING,
+        observed=f"{n} search call{'s' if n > 1 else ''} all returned empty results, and the "
+                 "final answer states the information is not available",
+        hypothesis="empty search results describe the queries, not the corpus: the agent may "
+                   "have concluded 'no data exists' from its own failed retrieval — the "
+                   "queries, not the data, are the likely failure",
+        evidence=[_ev(events, i) for i, _ in search_results[:3]] + [_ev(events, final_idx)],
+    ))
 
 
 def _nearest_event_at(events: List[Dict[str, Any]], position: int) -> Optional[Evidence]:

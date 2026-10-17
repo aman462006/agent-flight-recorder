@@ -165,7 +165,7 @@ function AboutPage() {
         {step(2, 'Record and stream',
           'Runs are recorded locally and streamed to the ingestion API in the background. Recording can never crash your agent: a broken store degrades to a no-op, and an outage falls back to a local mirror that catches up later.')}
         {step(3, 'Investigate',
-          'The investigator runs eight deterministic rules over each run: crashes, errors, unclosed spans, tool calls without results, conflicting records, token gaps, and baseline divergence against a healthy run.')}
+          'The investigator runs ten deterministic rules over each run: crashes, errors, unclosed spans, tool calls without results, conflicting records, stale-value consumption, empty-search conclusions, token gaps, repeated decisions, and baseline divergence against a healthy run.')}
       </div>
 
       <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.4, margin: '40px 0 6px' }}>What you can see</h2>
@@ -233,7 +233,7 @@ POST /events  {"run_id": "run_1", "kind": "llm.request",
         <div style={{ fontSize: 13, color: T.soft, lineHeight: 1.65 }}>
           An investigation with no findings means no recorded contradictions, crashes or gaps.
           It is not a verdict that the run was correct. The benchmark suite measures this
-          directly: 103 scenarios, zero false positives across all rules.
+          directly: 121 scenarios, zero false positives across all rules.
         </div>
       </div>
 
@@ -448,6 +448,8 @@ function RunDetail({ runId, otherRuns }: { runId: string; otherRuns: ApiRun[] })
         </span>
       </div>
 
+      {isDemoRun(data.run) && <DemoExplainer runId={data.run.run_id} />}
+
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
         <Stat label="LLM calls" value={String(cost.llm_calls)} tone="accent" />
         <Stat label="Tool calls" value={String(cost.tool_calls)} />
@@ -485,6 +487,89 @@ function RunDetail({ runId, otherRuns }: { runId: string; otherRuns: ApiRun[] })
       })()}
       <div style={{ ...card, padding: 12 }}>
         <EventInspector events={selected ? selected.events : runEvents} />
+      </div>
+    </div>
+  );
+}
+
+
+/* ---------- demo runs vs your runs ---------- */
+
+/** Seeded demo runs carry tags.demo = 'seeded-example'. Everything else
+ *  was streamed here by a real agent (SDK or raw HTTP) and belongs to
+ *  whoever owns that agent — the two never mix in one list. */
+function isDemoRun(run: ApiRun): boolean {
+  return Boolean(run.tags && (run.tags as Record<string, unknown>).demo);
+}
+
+const DEMO_VALUES_NOTE =
+  'Where the numbers come from: every value in this run is synthetic. ' +
+  'The events are scripted in afrec/demo_seed.py on the API server and seeded by POST /demo/seed ' +
+  '(the Load examples button). Token counts are illustrative but priced at real model rates by the cost estimator; ' +
+  'timestamps come from a fixed epoch so the runs sort deterministically. ' +
+  'Nothing here is a real production capture — the tag demo: seeded-example on the run says exactly that.';
+
+interface DemoInfo {
+  title: string;
+  shows: string;
+  fires: string;
+}
+
+const DEMO_CATALOG: Record<string, DemoInfo> = {
+  'demo-1-healthy': {
+    title: 'A healthy run',
+    shows: 'A support agent checks a refund from two databases, every span opens and closes, every LLM call reports token usage. The investigator stays silent on purpose: no findings is the correct verdict on a clean trace.',
+    fires: 'Nothing — clean by design, so you can see what "no rules fired" looks like.',
+  },
+  'demo-2-crash': {
+    title: 'A crash mid-tool-call',
+    shows: 'The agent starts rendering a PDF, a worker panic is recorded inside the span, and the run never ends. The partial trace is everything that happened before it died.',
+    fires: 'run_status_crashed (critical) and unclosed_span — the crash flag plus the span that never closed.',
+  },
+  'demo-3-tool-no-result': {
+    title: 'A tool call with no result',
+    shows: 'email.verify is called and its span ends, but no tool.result was ever recorded — and the agent then claims the email was verified. The recorder keeps the agent honest about what it actually saw.',
+    fires: 'tool_without_result — the agent acted on an assumption instead of real output.',
+  },
+  'demo-4-loop': {
+    title: 'A token-burning loop',
+    shows: 'The same LLM call, identical arguments, twenty times in a row. About 9,400 tokens burned with zero progress — the exact failure that silently drains a budget.',
+    fires: 'repeated_decision, with the honest token burn summed from the recorded responses.',
+  },
+  'demo-5-baseline-good': {
+    title: 'The healthy baseline',
+    shows: 'The good half of the divergence pair: the agent reads the live payment status, sees PAID, closes the case. On its own it is just a clean run — its job is to be the baseline for demo-6.',
+    fires: 'Nothing on its own. Select it as the baseline when investigating demo-6.',
+  },
+  'demo-6-baseline-bad': {
+    title: 'The diverging run',
+    shows: 'Identical start, then decision #3 diverges: instead of the live payment status the agent reads the payments archive and finds a stale UNPAID record from 2025-09-01 — and escalates a case that is already settled.',
+    fires: 'baseline_divergence (critical) — investigate it with demo-5 as the baseline and the finding pins the exact call where the two runs parted ways.',
+  },
+};
+
+function DemoExplainer({ runId }: { runId: string }) {
+  const info = DEMO_CATALOG[runId];
+  return (
+    <div style={{ ...card, padding: 16, marginBottom: 16, borderLeft: `3px solid ${T.amber}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ background: T.amberSoft, color: T.amber, fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '2px 9px', letterSpacing: 0.5 }}>
+          DEMO RUN
+        </span>
+        <span style={{ fontWeight: 700, fontSize: 13.5 }}>{info ? info.title : 'Seeded example run'}</span>
+      </div>
+      {info ? (
+        <div style={{ fontSize: 13, color: T.soft, lineHeight: 1.6, marginBottom: 8 }}>
+          <div style={{ marginBottom: 6 }}><b style={{ color: T.text }}>What it shows:</b> {info.shows}</div>
+          <div><b style={{ color: T.text }}>What the investigator reports:</b> {info.fires}</div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 13, color: T.soft, lineHeight: 1.6, marginBottom: 8 }}>
+          A synthetic example run seeded by the API. It is kept separate from your own agent runs so demos never pollute real traces.
+        </div>
+      )}
+      <div style={{ fontSize: 12, color: T.faint, lineHeight: 1.6, background: '#f8f9fc', borderRadius: 8, padding: 10 }}>
+        {DEMO_VALUES_NOTE}
       </div>
     </div>
   );
@@ -529,21 +614,51 @@ function DashboardPage({ selectedRun, onSelectRun }: { selectedRun: string | nul
         </div>
         {error && <div style={{ color: T.red, fontSize: 12, marginBottom: 8 }}>Could not reach the API: {error}</div>}
         {!runs && !error && <div style={{ color: T.soft, fontSize: 13 }}>Loading runs…</div>}
-        {runs?.map((r) => (
-          <div
-            key={r.run_id}
-            onClick={() => onSelectRun(r.run_id)}
-            style={{
-              padding: '10px 12px', borderRadius: 10, cursor: 'pointer', marginBottom: 6,
-              border: `1px solid ${selectedRun === r.run_id ? T.accent : T.border}`,
-              background: selectedRun === r.run_id ? T.accentSoft : '#fff',
-            }}
-          >
-            <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: T.text }}>{r.task}</div>
-            <div style={{ marginTop: 5 }}><span style={statusPill(r.status)}>{r.status}</span></div>
-          </div>
-        ))}
-        {runs?.length === 0 && <div style={{ color: T.faint, fontSize: 13 }}>No runs yet. Record one with the SDK.</div>}
+        {(() => {
+          if (!runs) return null;
+          const own = runs.filter((r) => !isDemoRun(r));
+          const demo = runs.filter(isDemoRun);
+          const row = (r: ApiRun) => (
+            <div
+              key={r.run_id}
+              onClick={() => onSelectRun(r.run_id)}
+              style={{
+                padding: '10px 12px', borderRadius: 10, cursor: 'pointer', marginBottom: 6,
+                border: `1px solid ${selectedRun === r.run_id ? T.accent : T.border}`,
+                background: selectedRun === r.run_id ? T.accentSoft : '#fff',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {isDemoRun(r) && (
+                  <span style={{ background: T.amberSoft, color: T.amber, fontSize: 9, fontWeight: 700, borderRadius: 999, padding: '1px 7px', letterSpacing: 0.4, flexShrink: 0 }}>
+                    DEMO
+                  </span>
+                )}
+                <span style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: T.text, flex: 1 }}>{r.task}</span>
+              </div>
+              <div style={{ marginTop: 5 }}><span style={statusPill(r.status)}>{r.status}</span></div>
+            </div>
+          );
+          return (
+            <div>
+              <div style={{ ...sectionLabel, marginTop: 8 }}>Your runs ({own.length})</div>
+              {own.length === 0 && (
+                <div style={{ color: T.faint, fontSize: 12.5, lineHeight: 1.6, marginBottom: 8 }}>
+                  No runs from your own agents yet. Stream one with the SDK or raw HTTP (snippets on the About page) and it lands here, never mixed with the demo runs.
+                </div>
+              )}
+              {own.map(row)}
+              <div style={{ ...sectionLabel, marginTop: 16 }}>Demo runs ({demo.length})</div>
+              {demo.length === 0 && (
+                <div style={{ color: T.faint, fontSize: 12.5, lineHeight: 1.6 }}>
+                  No demo runs loaded. Use the Load examples button above to seed the six canonical examples.
+                </div>
+              )}
+              {demo.map(row)}
+            </div>
+          );
+        })()}
+        {runs?.length === 0 && <div style={{ color: T.faint, fontSize: 13 }}>No runs yet. Record one with the SDK, or load the demo examples.</div>}
       </aside>
       <main className="afrec-main">
         {selectedRun

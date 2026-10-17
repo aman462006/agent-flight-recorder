@@ -212,3 +212,151 @@ class TestSerialization:
         assert doc["finding_count"] == len(doc["findings"])
         assert "hypothesis" in json.dumps(doc)
         assert "not asserted" in doc["note"]
+
+
+# -- stale_consumption + empty_search_conclusion (the 30-label benchmark rules) ---
+
+def _llm_answer(sid, t, answer, model="mock-gpt"):
+    return [
+        {"kind": "span.start", "span_id": sid, "t_offset_ms": t, "data": {"label": f"llm:{model}"}},
+        {"kind": "llm.response", "span_id": sid, "t_offset_ms": t + 1,
+         "data": {"payload": answer}, "input_tokens": 300, "output_tokens": 40, "model": model},
+        {"kind": "span.end", "span_id": sid, "t_offset_ms": t + 2, "data": {"label": f"llm:{model}"}},
+    ]
+
+
+def _run_end(t):
+    return {"kind": "run.end", "t_offset_ms": t}
+
+
+class TestStaleConsumption:
+    """The r09 shape: a trace holds an old and a fresh value; the agent
+    consumes the old one. Fires ONLY when a fresher value exists."""
+
+    RATES = [{"metric": "usd_inr_rate", "value": 74.5, "as_of": "2023-12-31"},
+             {"metric": "usd_inr_rate", "value": 83.2, "as_of": "2025-10-01"}]
+
+    def test_fires_when_answer_cites_older_value(self):
+        ev = ([_tool_span("s1", "search", {"query": "exchange rate"}, 1),
+               _tool_result("s1", self.RATES, 2), _span_end("s1", "search", 3)]
+              + _llm_answer("s2", 4, "Using the exchange rate of 74.5 INR/USD (2023), "
+                                     "the answer is 216.35 million USD.")
+              + [_run_end(7)])
+        inv = investigate_run(ev, run_meta={"task": "Convert Ather revenue to USD", "status": "completed"})
+        assert "stale_consumption" in _rules(inv)
+        f = [x for x in inv.findings if x.rule == "stale_consumption"][0]
+        assert f.severity == WARNING
+        assert len(f.evidence) == 3  # older record, fresher record, consumer
+        assert "74.5" in f.observed and "83.2" in f.observed
+
+    def test_fires_when_calculator_uses_older_value(self):
+        ev = ([_tool_span("s1", "search", {"query": "exchange rate"}, 1),
+               _tool_result("s1", self.RATES, 2), _span_end("s1", "search", 3),
+               _tool_span("s2", "calculator", {"expression": "1000000 * 74.5"}, 4),
+               _tool_result("s2", {"value": 74500000}, 5), _span_end("s2", "calculator", 6)]
+              + _llm_answer("s3", 7, "The answer is 74,500,000 INR.")
+              + [_run_end(10)])
+        inv = investigate_run(ev, run_meta={"task": "Convert 1 million USD", "status": "completed"})
+        assert "stale_consumption" in _rules(inv)
+
+    def test_silent_when_freshest_value_used(self):
+        ev = ([_tool_span("s1", "search", {"query": "exchange rate"}, 1),
+               _tool_result("s1", self.RATES, 2), _span_end("s1", "search", 3)]
+              + _llm_answer("s2", 4, "The most recent rate is 83.2 (as of 2025-10-01); "
+                                     "1 million USD is 83,200,000 INR.")
+              + [_run_end(7)])
+        inv = investigate_run(ev, run_meta={"task": "Convert 1 million USD", "status": "completed"})
+        assert "stale_consumption" not in _rules(inv)
+
+    def test_silent_when_answer_cites_both_values(self):
+        ev = ([_tool_span("s1", "search", {"query": "exchange rate"}, 1),
+               _tool_result("s1", self.RATES, 2), _span_end("s1", "search", 3)]
+              + _llm_answer("s2", 4, "The corpus has 74.5 (2023-12-31) and 83.2 (2025-10-01); "
+                                     "I trust the fresher one, 83.2.")
+              + [_run_end(7)])
+        inv = investigate_run(ev, run_meta={"task": "Convert 1 million USD", "status": "completed"})
+        assert "stale_consumption" not in _rules(inv)
+
+    def test_silent_with_only_one_value_on_record(self):
+        ev = ([_tool_span("s1", "search", {"query": "rate"}, 1),
+               _tool_result("s1", [{"metric": "usd_inr_rate", "value": 74.5, "as_of": "2023-12-31"}], 2),
+               _span_end("s1", "search", 3)]
+              + _llm_answer("s2", 4, "The rate is 74.5.")
+              + [_run_end(7)])
+        inv = investigate_run(ev, run_meta={"task": "Get the rate", "status": "completed"})
+        assert "stale_consumption" not in _rules(inv)
+
+    def test_silent_when_task_explicitly_asks_for_the_older_date(self):
+        ev = ([_tool_span("s1", "search", {"query": "exchange rate"}, 1),
+               _tool_result("s1", self.RATES, 2), _span_end("s1", "search", 3)]
+              + _llm_answer("s2", 4, "In 2023-12-31 the rate was 74.5 INR/USD.")
+              + [_run_end(7)])
+        inv = investigate_run(ev, run_meta={"task": "What was the rate on 2023-12-31?", "status": "completed"})
+        assert "stale_consumption" not in _rules(inv)
+
+    def test_comma_formatted_numbers_match(self):
+        ev = ([_tool_span("s1", "search", {"query": "revenue"}, 1),
+               _tool_result("s1", [{"company": "Vikram Solar", "metric": "revenue_inr_cr",
+                                    "value": 2100, "year": 2022},
+                                   {"company": "Vikram Solar", "metric": "revenue_inr_cr",
+                                    "value": 3110, "year": 2025}], 2),
+               _span_end("s1", "search", 3)]
+              + _llm_answer("s2", 4, "Vikram Solar's revenue is 2,100 crore INR.")
+              + [_run_end(7)])
+        inv = investigate_run(ev, run_meta={"task": "Vikram Solar revenue", "status": "completed"})
+        assert "stale_consumption" in _rules(inv)
+
+    def test_no_false_match_inside_larger_numbers(self):
+        ev = ([_tool_span("s1", "search", {"query": "rate"}, 1),
+               _tool_result("s1", self.RATES, 2), _span_end("s1", "search", 3)]
+              + _llm_answer("s2", 4, "The total is 83,200,000 INR, converted at the current rate.")
+              + [_run_end(7)])
+        inv = investigate_run(ev, run_meta={"task": "Convert 1 million USD", "status": "completed"})
+        assert "stale_consumption" not in _rules(inv)  # 83.2 must not match 83,200,000
+
+
+class TestEmptySearchConclusion:
+    """The r29 shape: every search empty, the answer claims unavailability.
+    A run with any real evidence (r21) must stay silent."""
+
+    def _empty_searches(self, sid_a="s1", sid_b="s2"):
+        return ([_tool_span(sid_a, "search", {"query": "oldest data year company"}, 1),
+                 _tool_result(sid_a, [], 2), _span_end(sid_a, "search", 3),
+                 _tool_span(sid_b, "search", {"query": "oldest data year in corpus"}, 4),
+                 _tool_result(sid_b, [], 5), _span_end(sid_b, "search", 6)])
+
+    def test_fires_when_all_searches_empty_and_answer_claims_unavailability(self):
+        ev = self._empty_searches() + _llm_answer("s3", 7, "The search corpus returned no records, "
+                                                           "so the requested information is not available.") + [_run_end(11)]
+        inv = investigate_run(ev, run_meta={"task": "Which company's data is oldest?", "status": "completed"})
+        assert "empty_search_conclusion" in _rules(inv)
+        f = [x for x in inv.findings if x.rule == "empty_search_conclusion"][0]
+        assert f.severity == WARNING
+        assert "2 search calls" in f.observed
+        assert len(f.evidence) >= 3
+
+    def test_silent_when_any_tool_returned_real_evidence(self):
+        ev = ([_tool_span("s1", "search", {"query": "4724.096"}, 1),
+               _tool_result("s1", [], 2), _span_end("s1", "search", 3),
+               _tool_span("s2", "calculator", {"expression": "5678*83.2/100"}, 4),
+               _tool_result("s2", {"value": 4724.096}, 5), _span_end("s2", "calculator", 6)]
+              + _llm_answer("s3", 7, "The calculator result is 4724.096. However, a search of "
+                                     "the corpus returned no records.")
+              + [_run_end(11)])
+        inv = investigate_run(ev, run_meta={"task": "Compute and interpret", "status": "completed"})
+        assert "empty_search_conclusion" not in _rules(inv)
+
+    def test_silent_when_a_search_found_something(self):
+        ev = ([_tool_span("s1", "search", {"query": "ather revenue"}, 1),
+               _tool_result("s1", [{"company": "Ather Energy", "metric": "revenue_inr_cr",
+                                    "value": 1800, "year": 2024}], 2),
+               _span_end("s1", "search", 3)]
+              + _llm_answer("s2", 4, "No matching records were found for the other question.")
+              + [_run_end(7)])
+        inv = investigate_run(ev, run_meta={"task": "Ather revenue", "status": "completed"})
+        assert "empty_search_conclusion" not in _rules(inv)
+
+    def test_silent_when_answer_reports_something_rather_than_unavailability(self):
+        ev = self._empty_searches() + _llm_answer("s3", 7, "The oldest company is Vikram Solar (2022).") + [_run_end(11)]
+        inv = investigate_run(ev, run_meta={"task": "Which company's data is oldest?", "status": "completed"})
+        assert "empty_search_conclusion" not in _rules(inv)
