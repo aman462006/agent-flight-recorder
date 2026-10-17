@@ -233,6 +233,15 @@ class Run:
             self.meta.status = "crashed"
         self.recorder.store.save_run(self.meta)
         self._emit(Event(run_id=self.run_id, kind=KIND_RUN_END, data={"status": self.meta.status}))
+        # A closed run should not depend on process lifetime to reach the
+        # API: drain now. HttpStore.flush blocks until the queue empties;
+        # SqliteStore has no flush and is skipped harmlessly.
+        flush = getattr(self.recorder.store, "flush", None)
+        if flush is not None:
+            try:
+                flush(timeout=10.0)
+            except Exception:  # instrumentation must never break the agent
+                pass
         return False
 
     # -- span constructors -------------------------------------------------

@@ -152,3 +152,31 @@ def test_end_to_end_real_agent_run_reaches_api():
     # Tokens must survive the round trip for the dashboard to display them.
     llm_resp = next(e for e in detail["events"] if e["kind"] == "llm.response")
     assert llm_resp["input_tokens"] == 1500 and llm_resp["output_tokens"] == 40
+
+
+def test_run_exit_flushes_http_store():
+    """A short-lived script (no explicit flush) must not lose its tail: the
+    run context manager drains the queue on close."""
+    import httpx
+    from afrec import Recorder
+    from afrec.http_store import HttpStore
+
+    posts = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        posts.append(request.url.path)
+        return httpx.Response(200, json={"ok": True})
+
+    import tempfile, os
+    mirror_path = os.path.join(tempfile.mkdtemp(), "m.sqlite3")
+    from afrec.recorder import SqliteStore
+    store = HttpStore("https://api.test", mirror=SqliteStore(mirror_path),
+                      transport=httpx.MockTransport(handler))
+    rec = Recorder(store=store)
+    with rec.run("short-lived-script", tags={"t": 1}) as run:
+        with run.tool_call("p", {"n": 1}) as t:
+            t.result({"ok": True})
+    # queue drained by the run exit itself, before process exit
+    assert store._queue.unfinished_tasks == 0
+    assert any(p.endswith("/runs") for p in posts), posts
+    assert any(p.endswith("/events") for p in posts), posts

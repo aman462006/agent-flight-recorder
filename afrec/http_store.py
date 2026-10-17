@@ -27,6 +27,7 @@ Design rules, same honesty as the rest of afrec:
 
 from __future__ import annotations
 
+import atexit
 import queue
 import threading
 import time
@@ -74,6 +75,16 @@ class HttpStore:
         self._queue: "queue.Queue[Optional[Dict[str, Any]]]" = queue.Queue()
         self._worker: Optional[threading.Thread] = None
         self._stopping = False
+        # Never lose the tail of a queue at process exit: the daemon worker
+        # dies with the process, so drain at atexit before that happens.
+        # Idempotent by event_id: a second drain is a no-op.
+        atexit.register(self._drain_atexit)
+
+    def _drain_atexit(self) -> None:
+        try:
+            self.flush(timeout=15.0)
+        except Exception:
+            pass  # best effort by design; the local mirror already holds everything
 
     # -- SqliteStore-compatible write interface --------------------------------
 
