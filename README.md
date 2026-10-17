@@ -75,19 +75,19 @@ export AFREC_API_URL=https://afrec-api.onrender.com   # or your own deployment
 
 ```mermaid
 flowchart LR
-    subgraph yourapp [Your agent - Python]
-        SDK[afrec recorder SDK<br/>run / span / event model<br/>redaction in the write path]
+    subgraph yourapp ["Your agent (Python)"]
+        SDK["afrec recorder SDK<br/>run / span / event model<br/>redaction in the write path"]
     end
-    SDK -- "SQLite file (stdlib, zero deps)" --> LOCAL[(afrec.sqlite3)]
+    SDK -- "SQLite file (stdlib, zero deps)" --> LOCAL[("afrec.sqlite3")]
     SDK -- "HTTP POST, idempotent event ids<br/>local mirror as outage insurance" --> API
 
-    subgraph server [Ingestion API - FastAPI]
-        API[POST /runs, /events<br/>GET /runs/\{id\}/investigate, /profile<br/>(the compare view diffs two runs<br/>client-side with the same fingerprint)]
+    subgraph server ["Ingestion API (FastAPI)"]
+        API["POST /runs, /events<br/>GET /runs/:id/investigate, /profile<br/>the compare view diffs two runs<br/>client-side with the same fingerprint"]
     end
-    API -- DATABASE_URL set --> PG[(PostgreSQL - the hosted path)]
-    API -- otherwise --> SQLITE2[(SQLite file - local/dev)]
+    API -- "DATABASE_URL set" --> PG[("PostgreSQL (the hosted path)")]
+    API -- "otherwise" --> SQLITE2[("SQLite file (local/dev)")]
 
-    DASH[React + TypeScript dashboard<br/>timeline / inspector / compare / costs] --> API
+    DASH["React + TypeScript dashboard<br/>timeline / inspector / compare / costs"] --> API
 ```
 
 - **Recorder SDK** (`afrec/`): run/span/event model, SQLite store, HTTP
